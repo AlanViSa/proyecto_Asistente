@@ -1,0 +1,121 @@
+name: Dependencies
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '0 0 * * 0'  # Ejecutar semanalmente
+
+jobs:
+  dependencies:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pip-tools
+
+    - name: Check for outdated dependencies
+      run: |
+        pip-compile --dry-run --upgrade requirements.txt
+
+    - name: Run pip-audit
+      run: |
+        pip install pip-audit
+        pip-audit
+
+    - name: Run Poetry check
+      run: |
+        pip install poetry
+        poetry check
+
+    - name: Run pipdeptree
+      run: |
+        pip install pipdeptree
+        pipdeptree
+
+    - name: Run dependency graph
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const dependencies = require('./requirements.txt');
+          const graph = {
+            nodes: [],
+            edges: []
+          };
+          
+          // Crear nodos para cada dependencia
+          dependencies.forEach(dep => {
+            graph.nodes.push({
+              id: dep.name,
+              label: dep.name,
+              version: dep.version
+            });
+          });
+          
+          // Crear aristas para las dependencias
+          dependencies.forEach(dep => {
+            if (dep.requires) {
+              dep.requires.forEach(req => {
+                graph.edges.push({
+                  from: dep.name,
+                  to: req.name
+                });
+              });
+            }
+          });
+          
+          // Guardar el grafo como artefacto
+          const fs = require('fs');
+          fs.writeFileSync('dependency-graph.json', JSON.stringify(graph, null, 2));
+
+    - name: Upload dependency graph
+      uses: actions/upload-artifact@v3
+      with:
+        name: dependency-graph
+        path: dependency-graph.json
+
+    - name: Check for circular dependencies
+      run: |
+        pip install pip-requirements-checker
+        pip-requirements-checker requirements.txt
+
+    - name: Run pip-compile
+      run: |
+        pip-compile --output-file requirements.txt requirements.in
+
+    - name: Create Pull Request if dependencies need updating
+      uses: peter-evans/create-pull-request@v5
+      with:
+        commit-message: 'chore: update dependencies'
+        title: 'chore: update dependencies'
+        body: |
+          Actualización automática de dependencias:
+          
+          - Actualizadas dependencias desactualizadas
+          - Resueltos conflictos de versiones
+          - Actualizado requirements.txt
+        branch: update-dependencies
+        delete-branch: true
+
+    - name: Notify on updates
+      if: success()
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const message = '✅ Dependencias actualizadas correctamente';
+          await github.rest.issues.createComment({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+            body: message
+          }); 

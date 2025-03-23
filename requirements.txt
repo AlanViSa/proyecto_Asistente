@@ -1,0 +1,72 @@
+# API y Web
+fastapi==0.104.1
+uvicorn==0.24.0
+gunicorn>=21.2.0  # WSGI HTTP Server
+pydantic==2.5.2
+pydantic-settings>=2.1.0
+pydantic[email]>=2.0.0
+slowapi==0.1.9  # Rate limiting
+python-multipart==0.0.6
+
+# Database
+sqlalchemy==2.0.23
+asyncpg==0.29.0  # PostgreSQL async driver
+alembic==1.12.1
+psycopg2-binary==2.9.9
+
+# Security
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-dotenv==1.0.0
+
+# External Services
+openai>=1.3.5
+twilio==8.10.0
+
+# Utilities
+aiohttp==3.9.1
+python-decouple==3.8
+pytz==2023.3
+
+# Monitoring & Logging
+prometheus-client==0.19.0
+python-json-logger==2.0.7
+prometheus-fastapi-instrumentator==5.7.1
+
+# Testing
+pytest==7.4.3
+pytest-asyncio==0.21.1
+httpx==0.25.2
+pytest-cov==4.1.0
+email-validator==1.1.3
+
+# New dependencies
+aiosqlite>=0.19.0
+aiosmtplib==1.1.4
+jinja2==3.0.1
+aiofiles==0.7.0
+python-dateutil==2.8.2
+
+# Main Dependencies
+redis==5.0.1
+
+# Testing Dependencies
+pytest-mock==3.12.0
+pytest-xdist==3.3.1
+pytest-benchmark==4.0.0
+pytest-randomly==3.15.0
+pytest-env==1.1.1
+pytest-sugar==0.9.7
+pytest-html==4.1.1
+pytest-metadata==3.0.0
+pytest-selenium==4.0.0
+pytest-docker==1.0.0
+pytest-postgresql==4.0.0
+
+# External Services
+tenacity==8.2.3
+structlog==23.2.0
+opentelemetry-api==1.21.0
+opentelemetry-sdk==1.21.0
+opentelemetry-instrumentation-fastapi==0.42b0
+opentelemetry-exporter-prometheus==1.21.0 

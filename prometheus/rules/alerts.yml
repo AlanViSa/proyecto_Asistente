@@ -1,0 +1,38 @@
+groups:
+  - name: app_alerts
+    rules:
+      - alert: HighErrorRate
+        expr: rate(http_errors_total[5m]) / rate(http_requests_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Alta tasa de errores HTTP"
+          description: "La tasa de errores HTTP es superior al 5% en los últimos 5 minutos"
+
+      - alert: HighLatency
+        expr: rate(http_request_duration_seconds_sum[5m]) / rate(http_request_duration_seconds_count[5m]) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Alta latencia en solicitudes HTTP"
+          description: "La latencia promedio de las solicitudes HTTP es superior a 2 segundos"
+
+      - alert: TooManyDBConnections
+        expr: db_connections > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Demasiadas conexiones a la base de datos"
+          description: "El número de conexiones activas a la base de datos es superior a 100"
+
+      - alert: HighActiveUsers
+        expr: active_users > 1000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Alto número de usuarios activos"
+          description: "El número de usuarios activos es superior a 1000" 
