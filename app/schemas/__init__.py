@@ -1,24 +1,67 @@
 """
-Pydantic models para validación de datos y serialización
+Schemas package initialization
+Import all schemas here for easy access throughout the application
 """
 
-from .cliente import Cliente, ClienteCreate, ClienteUpdate
-from .cita import Cita, CitaCreate, CitaUpdate, CitaResponse
-from .token import Token, TokenData, TokenPayload
+from app.schemas.client import (
+    ClientBase,
+    ClientCreate,
+    ClientUpdate,
+    ClientInDB,
+    ClientResponse
+)
+
+from app.schemas.appointment import (
+    AppointmentStatus,
+    AppointmentBase,
+    AppointmentCreate,
+    AppointmentUpdate,
+    AppointmentInDB,
+    AppointmentList,
+    Appointment
+)
+
+from app.schemas.service import (
+    ServiceBase,
+    ServiceCreate,
+    ServiceUpdate,
+    ServiceInDB,
+    Service
+)
+
+from app.schemas.reminder import (
+    ReminderBase,
+    ReminderCreate,
+    ReminderUpdate,
+    ReminderInDB,
+    Reminder
+)
 
 # Exportar los esquemas
 __all__ = [
     # Cliente schemas
-    "Cliente",
-    "ClienteCreate",
-    "ClienteUpdate",
+    "ClientBase",
+    "ClientCreate",
+    "ClientUpdate",
+    "ClientInDB",
+    "ClientResponse",
     # Cita schemas
-    "Cita",
-    "CitaCreate",
-    "CitaUpdate",
-    "CitaResponse",
+    "AppointmentStatus",
+    "AppointmentBase",
+    "AppointmentCreate",
+    "AppointmentUpdate",
+    "AppointmentInDB",
+    "AppointmentList",
+    "Appointment",
     # Token schemas
-    "Token",
-    "TokenData",
-    "TokenPayload"
+    "ServiceBase",
+    "ServiceCreate",
+    "ServiceUpdate",
+    "ServiceInDB",
+    "Service",
+    "ReminderBase",
+    "ReminderCreate",
+    "ReminderUpdate",
+    "ReminderInDB",
+    "Reminder"
 ] 

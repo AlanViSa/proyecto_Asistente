@@ -1,48 +1,46 @@
 """
-Endpoints para la autenticación de clientes
+API endpoints for client authentication
 
-Este módulo proporciona endpoints para:
-- Inicio de sesión de clientes
-- Registro de nuevos clientes
-- Verificación de tokens JWT
+This module provides endpoints for:
+- Client login
+- Registration of new clients
+- JWT token verification
 """
 from datetime import timedelta
 from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, status, Body
 from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
-from app.api.deps import get_db, get_current_cliente
+from app.db.database import get_db
 from app.core.config import settings
-from app.services.auth import AuthService
-from app.services.cliente import ClienteService
-from app.schemas.cliente import ClienteCreate, Cliente
+from app.core.security import authenticate_user, create_access_token, get_current_user, verify_password
+from app.models.client import Client
+from app.schemas.client import ClientCreate, ClientResponse
 from app.schemas.token import Token
+from app.models.user import User
+from app.schemas.user import UserCreate, UserResponse
 
 router = APIRouter()
 
 @router.post(
     "/login",
     response_model=Token,
-    summary="Iniciar Sesión",
+    summary="Login",
     description="""
-    Endpoint para autenticar un cliente y obtener un token JWT.
+    Endpoint to authenticate a client and obtain a JWT token.
     
-    ## Parámetros
-    * `username`: Email del cliente
-    * `password`: Contraseña del cliente
+    Parameters:
+    - **username**: Client email
+    - **password**: Client password
     
-    ## Respuesta
-    * `access_token`: Token JWT para autenticación
-    * `token_type`: Tipo de token (siempre "bearer")
-    
-    ## Errores
-    * 401: Credenciales incorrectas
-    * 400: Cliente inactivo
+    Response:
+    - **access_token**: JWT token for authentication
+    - **token_type**: Token type (always "bearer")
     """,
     responses={
         200: {
-            "description": "Login exitoso",
+            "description": "Successful login",
             "content": {
                 "application/json": {
                     "example": {
@@ -53,21 +51,21 @@ router = APIRouter()
             }
         },
         401: {
-            "description": "Credenciales incorrectas",
+            "description": "Incorrect credentials",
             "content": {
                 "application/json": {
                     "example": {
-                        "detail": "Email o contraseña incorrectos"
+                        "detail": "Incorrect email or password"
                     }
                 }
             }
         },
         400: {
-            "description": "Cliente inactivo",
+            "description": "Inactive client",
             "content": {
                 "application/json": {
                     "example": {
-                        "detail": "Cliente inactivo"
+                        "detail": "Inactive client"
                     }
                 }
             }
@@ -75,148 +73,145 @@ router = APIRouter()
     }
 )
 async def login(
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
     form_data: OAuth2PasswordRequestForm = Depends()
 ) -> Any:
     """
-    Endpoint para autenticar un cliente y obtener un token JWT
+    OAuth2 compatible token login, get an access token for future requests.
     """
-    cliente = await AuthService.authenticate_cliente(
-        db, form_data.username, form_data.password
-    )
-    if not cliente:
+    # Find the user with the given email
+    user = db.query(User).filter(User.email == form_data.username).first()
+    
+    # If user doesn't exist or password is incorrect, raise an exception
+    if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Email o contraseña incorrectos",
+            detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    if not cliente.activo:
+    
+    # If user is not active, raise an exception
+    if not user.is_active:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cliente inactivo"
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail="Inactive user"
         )
     
+    # Create access token with expiry as configured in settings
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = AuthService.create_access_token(
-        data={"sub": cliente.email},
-        expires_delta=access_token_expires
-    )
-    
     return {
-        "access_token": access_token,
-        "token_type": "bearer"
+        "access_token": create_access_token(
+            subject=str(user.id), expires_delta=access_token_expires
+        ),
+        "token_type": "bearer",
     }
 
 @router.post(
-    "/registro",
-    response_model=Cliente,
-    summary="Registrar Cliente",
+    "/register",
+    response_model=UserResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Register Client",
     description="""
-    Endpoint para registrar un nuevo cliente en el sistema.
+    Endpoint to register a new client in the system.
     
-    ## Parámetros
-    * `email`: Email del cliente (único)
-    * `password`: Contraseña del cliente
-    * `nombre`: Nombre completo del cliente
-    * `telefono`: Teléfono del cliente (único)
-    * `fecha_nacimiento`: Fecha de nacimiento (opcional)
+    Parameters:
+    - **email**: Client email (unique)
+    - **password**: Client password
+    - **full_name**: Client's full name
+    - **phone**: Client's phone number in format +1-XXX-XXX-XXXX (unique)
     
-    ## Respuesta
-    * Datos del cliente registrado
-    
-    ## Errores
-    * 400: Email o teléfono ya registrado
-    * 422: Datos inválidos
+    Response:
+    - Registered client data
     """,
     responses={
-        200: {
-            "description": "Cliente registrado exitosamente",
+        201: {
+            "description": "Client successfully registered",
             "content": {
                 "application/json": {
                     "example": {
                         "id": 1,
-                        "email": "cliente@example.com",
-                        "nombre": "Juan Pérez",
-                        "telefono": "+1234567890",
-                        "fecha_nacimiento": "1990-01-01",
-                        "activo": true
+                        "email": "client@example.com",
+                        "full_name": "John Doe",
+                        "phone": "+1-555-123-4567",
+                        "is_active": True
                     }
                 }
             }
         },
         400: {
-            "description": "Email o teléfono ya registrado",
+            "description": "Email or phone already registered",
             "content": {
                 "application/json": {
                     "example": {
-                        "detail": "Ya existe un cliente registrado con este email"
+                        "detail": "Email already registered"
                     }
                 }
             }
         }
     }
 )
-async def registro(
-    *,
-    db: AsyncSession = Depends(get_db),
-    cliente_in: ClienteCreate
+async def register(
+    user_in: UserCreate,
+    db: Session = Depends(get_db)
 ) -> Any:
     """
-    Endpoint para registrar un nuevo cliente
+    Register a new user.
     """
-    # Verificar si ya existe un cliente con ese email
-    cliente = await ClienteService.get_by_email(db, email=cliente_in.email)
-    if cliente:
+    # Check if a user with the same email already exists
+    user = db.query(User).filter(User.email == user_in.email).first()
+    if user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ya existe un cliente registrado con este email"
+            detail="A user with this email already exists",
         )
     
-    # Verificar si ya existe un cliente con ese teléfono
-    cliente = await ClienteService.get_by_telefono(db, telefono=cliente_in.telefono)
-    if cliente:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ya existe un cliente registrado con este teléfono"
-        )
+    # Create a new user with the provided data
+    user = User(
+        email=user_in.email,
+        hashed_password=get_password_hash(user_in.password),
+        full_name=user_in.full_name,
+        phone=user_in.phone,
+        is_active=True,
+        is_admin=False,
+    )
     
-    cliente = await ClienteService.create(db, cliente_in)
-    return cliente
+    # Add the user to the database and commit the changes
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    
+    return user
 
 @router.post(
     "/test-token",
-    response_model=Cliente,
-    summary="Probar Token",
+    response_model=ClientResponse,
+    summary="Test Token",
     description="""
-    Endpoint para verificar la validez de un token JWT.
+    Endpoint to verify the validity of a JWT token.
     
-    ## Headers
-    * `Authorization`: Bearer token JWT
+    Headers:
+    - **Authorization**: Bearer JWT token
     
-    ## Respuesta
-    * Datos del cliente autenticado
-    
-    ## Errores
-    * 401: Token inválido o expirado
+    Response:
+    - Authenticated client data
     """,
     responses={
         200: {
-            "description": "Token válido",
+            "description": "Valid token",
             "content": {
                 "application/json": {
                     "example": {
                         "id": 1,
-                        "email": "cliente@example.com",
-                        "nombre": "Juan Pérez",
-                        "telefono": "+1234567890",
-                        "fecha_nacimiento": "1990-01-01",
-                        "activo": true
+                        "email": "client@example.com",
+                        "full_name": "John Doe",
+                        "phone": "+1-555-123-4567",
+                        "is_active": True
                     }
                 }
             }
         },
         401: {
-            "description": "Token inválido o expirado",
+            "description": "Invalid or expired token",
             "content": {
                 "application/json": {
                     "example": {
@@ -228,9 +223,9 @@ async def registro(
     }
 )
 async def test_token(
-    current_cliente: Cliente = Depends(get_current_cliente)
+    current_user: Client = Depends(get_current_user)
 ) -> Any:
     """
-    Endpoint para probar el token JWT
+    Endpoint to test JWT token
     """
-    return current_cliente 
+    return current_user 

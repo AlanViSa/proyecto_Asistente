@@ -1,3 +1,9 @@
+"""
+Application configuration settings using Pydantic
+
+This module defines all configuration settings used throughout the application,
+loaded from environment variables or .env files.
+"""
 from datetime import time
 from functools import lru_cache
 from typing import List, Optional, Union
@@ -11,50 +17,78 @@ from pydantic import (
 )
 from pydantic_settings import BaseSettings, SettingsConfigDict
 import os
+import secrets
 
 class Settings(BaseSettings):
-    """Configuración de la aplicación"""
+    """
+    Application settings with environment variable support.
+    """
+    API_V1_STR: str = "/api/v1"
+    PROJECT_NAME: str = "Salon Assistant"
+    SERVER_HOST: str = "0.0.0.0"
+    SERVER_PORT: int = 8000
     
-    # API
-    API_V1_STR: str = Field(default="/api/v1")
-    PROJECT_NAME: str = Field(default="Asistente Virtual de Citas")
-    SERVER_HOST: AnyHttpUrl = Field(default="http://localhost:8000")
-    
-    # OpenAI
-    OPENAI_API_KEY: str = Field(...)
+    # Authentication
+    SECRET_KEY: str = secrets.token_urlsafe(32)
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
     
     # Database
-    DATABASE_URL: str = Field(default="sqlite+aiosqlite:///./app.db")
+    DATABASE_URL: str
     
-    # Twilio
-    TWILIO_ACCOUNT_SID: str = Field(...)
-    TWILIO_AUTH_TOKEN: str = Field(...)
-    TWILIO_PHONE_NUMBER: str = Field(...)
-    TWILIO_WHATSAPP_NUMBER: str = Field(...)
+    # Redis
+    REDIS_URL: str = "redis://localhost:6379/0"
+    
+    # CORS
+    CORS_ORIGINS: List[str] = ["*"]
+    
+    # Rate Limiting
+    RATE_LIMIT: int = 60  # Requests per minute
+    
+    # Business Hours
+    HORARIO_APERTURA: str = "09:00"
+    HORARIO_CIERRE: str = "19:00"
+    
+    # Twilio Configuration
+    TWILIO_ACCOUNT_SID: Optional[str] = None
+    TWILIO_AUTH_TOKEN: Optional[str] = None
+    TWILIO_PHONE_NUMBER: Optional[str] = None
+    TWILIO_WHATSAPP_NUMBER: Optional[str] = None
+    
+    # OpenAI API
+    OPENAI_API_KEY: Optional[str] = None
+    
+    # Logging
+    LOGGING_LEVEL: str = "INFO"
+    
+    # Monitoring
+    PROMETHEUS_MULTIPROC_DIR: Optional[str] = None
+    GRAFANA_URL: Optional[str] = None
+    SENTRY_DSN: Optional[str] = None
+    
+    # SSL Configuration
+    SSL_CERTIFICATE: Optional[str] = None
+    SSL_KEY: Optional[str] = None
     
     # Application
-    APP_NAME: str = Field(default="Asistente Virtual Salón")
-    BUSINESS_NAME: str = Field(default="Beauty Salon")
-    BUSINESS_HOURS_START: str = Field(default="09:00")
-    BUSINESS_HOURS_END: str = Field(default="20:00")
-    TIMEZONE: str = Field(default="UTC")
+    BUSINESS_NAME: str = Field(default="Salon Assistant")
+    TIMEZONE: str = Field(default="America/New_York")
     DEBUG: bool = Field(default=True)
     ENVIRONMENT: str = Field(default="development")
     
-    # JWT
-    SECRET_KEY: str = Field(...)
-    ALGORITHM: str = Field(default="HS256")
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=30)
-    
-    # CORS
-    ALLOWED_ORIGINS: List[str] = Field(default=["http://localhost:3000"])
-    
-    # Rate Limiting
-    RATE_LIMIT_PER_MINUTE: int = Field(default=60)
+    # Database
+    DB_POOL_SIZE: int = 5
+    DB_MAX_OVERFLOW: int = 10
+    DB_POOL_TIMEOUT: int = 30
+    DB_POOL_RECYCLE: int = 1800
     
     # Logging
-    LOG_LEVEL: str = Field(default="INFO")
+    LOG_LEVEL: str = "INFO"
     LOG_FILE: str = Field(default="./logs/app.log")
+    
+    # Monitoring
+    PROMETHEUS_METRICS_PATH: str = "/metrics"
+    GRAFANA_PORT: int = 3000
 
     @validator("ENVIRONMENT")
     def validate_environment(cls, v):
@@ -63,7 +97,7 @@ class Settings(BaseSettings):
             raise ValueError(f"Environment must be one of {allowed}")
         return v
     
-    @validator("BUSINESS_HOURS_START", "BUSINESS_HOURS_END")
+    @validator("HORARIO_APERTURA", "HORARIO_CIERRE")
     def validate_business_hours(cls, v):
         try:
             hour, minute = map(int, v.split(":"))
@@ -79,11 +113,13 @@ class Settings(BaseSettings):
             raise ValueError(f"Log level must be one of {allowed}")
         return v.upper()
 
-    @validator("ALLOWED_ORIGINS", pre=True)
-    def validate_allowed_origins(cls, v):
-        if isinstance(v, str):
-            return [origin.strip() for origin in v.split(",") if origin.strip()]
-        return v
+    @validator("CORS_ORIGINS", pre=True)
+    def assemble_cors_origins(cls, v: Union[str, List[str]]) -> List[str]:
+        if isinstance(v, str) and not v.startswith("["):
+            return [i.strip() for i in v.split(",")]
+        elif isinstance(v, (list, str)):
+            return v
+        raise ValueError(v)
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -93,8 +129,8 @@ class Settings(BaseSettings):
 
 @lru_cache()
 def get_settings() -> Settings:
-    """Retorna una instancia cacheada de la configuración"""
+    """Returns a cached instance of the settings"""
     return Settings()
 
-# Instancia global de configuración
+# Global settings instance
 settings = get_settings() 
