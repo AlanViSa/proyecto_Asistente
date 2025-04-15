@@ -1,28 +1,27 @@
 """
 BlockedSchedule database model definition for ORM
 """
-from sqlalchemy import Boolean, Column, Integer, String, DateTime, Text
+from sqlalchemy import Column, Integer, String, DateTime, Boolean
 from sqlalchemy.sql import func
 from datetime import datetime
-import pytz
 
 from app.db.database import Base
 
-eastern = pytz.timezone('America/New_York')
-
 class BlockedSchedule(Base):
-    """Model for blocked time slots that are unavailable for appointments"""
-    __tablename__ = "blocked_schedules"
+    """Model for blocked time slots in the schedule"""
+    __tablename__ = "blocked_schedule"
 
     id = Column(Integer, primary_key=True, index=True)
-    start_time = Column(DateTime(timezone=True), nullable=False, index=True)
-    end_time = Column(DateTime(timezone=True), nullable=False, index=True)
-    reason = Column(Text, nullable=True)
-    is_active = Column(Boolean, default=True, nullable=False)
+    reason = Column(String, nullable=False)
+    start_date = Column(DateTime(timezone=True), nullable=False)
+    end_date = Column(DateTime(timezone=True), nullable=False)
+    is_recurring = Column(Boolean, default=False)
+    recurrence_pattern = Column(String, nullable=True)  # JSON string with recurrence details
+    is_active = Column(Boolean, default=True)
     
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
     def __repr__(self):
-        return f"<BlockedSchedule {self.id}: {self.start_time} - {self.end_time}>" 
+        return f"<BlockedSchedule {self.start_date} to {self.end_date}>" 

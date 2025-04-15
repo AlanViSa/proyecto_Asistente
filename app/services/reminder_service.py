@@ -1,121 +1,221 @@
 """
-Service for handling reminder processing and delivery.
+Service for reminder management
 """
-from datetime import datetime
-from typing import List
+from typing import List, Optional, Dict, Any
+from datetime import datetime, timedelta
+from sqlalchemy import select, and_, or_, func
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import SQLAlchemyError
 
-from sqlalchemy.orm import Session
-from sqlalchemy import and_
-
-from app.models.reminder import Reminder
-from app.models.appointment import AppointmentStatus
-from app.core.notifications import NotificationService
-
+from app.db.database import DatabaseError
+from app.models.reminder import Reminder, ReminderStatus
+from app.models.appointment import Appointment, AppointmentStatus
+from app.models.client import Client
+from app.schemas.reminder import ReminderCreate, ReminderUpdate
 
 class ReminderService:
-    """
-    Service class for reminder-related business logic.
-    """
-    
-    def __init__(self, db: Session):
-        self.db = db
-        self.notification_service = NotificationService()
-    
-    def process_pending_reminders(self) -> int:
+    """Service for reminder operations"""
+
+    @staticmethod
+    async def get_by_id(db: AsyncSession, reminder_id: int) -> Optional[Reminder]:
+        """Gets a reminder by ID"""
+        try:
+            result = await db.execute(
+                select(Reminder).where(Reminder.id == reminder_id)
+            )
+            return result.scalar_one_or_none()
+        except SQLAlchemyError as e:
+            raise DatabaseError(f"Error getting reminder by ID: {str(e)}")
+
+    @staticmethod
+    async def get_by_appointment(db: AsyncSession, appointment_id: int) -> List[Reminder]:
+        """Gets reminders for an appointment"""
+        try:
+            result = await db.execute(
+                select(Reminder).where(Reminder.appointment_id == appointment_id)
+            )
+            return list(result.scalars().all())
+        except SQLAlchemyError as e:
+            raise DatabaseError(f"Error getting reminders by appointment: {str(e)}")
+
+    @staticmethod
+    async def get_all(
+        db: AsyncSession,
+        skip: int = 0,
+        limit: int = 100
+    ) -> List[Reminder]:
+        """Gets all reminders"""
+        try:
+            result = await db.execute(
+                select(Reminder)
+                .offset(skip)
+                .limit(limit)
+            )
+            return list(result.scalars().all())
+        except SQLAlchemyError as e:
+            raise DatabaseError(f"Error getting all reminders: {str(e)}")
+
+    @staticmethod
+    async def get_pending_reminders(db: AsyncSession) -> List[Reminder]:
         """
-        Process all pending reminders that are due.
+        Gets all pending reminders that should be sent now
         
-        Returns:
-            int: Number of reminders processed
+        Returns reminders where:
+        - Status is PENDING
+        - Scheduled time is in the past
+        - The associated appointment is still CONFIRMED
         """
-        # Get all pending reminders that are due
-        pending_reminders = self.db.query(Reminder).filter(
-            and_(
-                Reminder.sent == False,
-                Reminder.scheduled_time <= datetime.now(),
-                # Only process reminders for pending/confirmed appointments
-                Reminder.appointment.has(
-                    status=AppointmentStatus.PENDING
-                ) | Reminder.appointment.has(
-                    status=AppointmentStatus.CONFIRMED
+        try:
+            now = datetime.utcnow()
+            
+            # Join with appointment to filter by appointment status
+            result = await db.execute(
+                select(Reminder)
+                .join(Appointment, Reminder.appointment_id == Appointment.id)
+                .where(
+                    and_(
+                        Reminder.status == ReminderStatus.PENDING,
+                        Reminder.scheduled_time <= now,
+                        Appointment.status == AppointmentStatus.CONFIRMED
+                    )
                 )
             )
-        ).all()
-        
-        sent_count = 0
-        for reminder in pending_reminders:
-            if self._send_reminder(reminder):
-                sent_count += 1
-                
-                # Mark as sent
-                reminder.sent = True
-                self.db.add(reminder)
-        
-        # Commit all changes
-        if sent_count > 0:
-            self.db.commit()
-            
-        return sent_count
-    
-    def _send_reminder(self, reminder: Reminder) -> bool:
-        """
-        Send a single reminder notification.
-        
-        Args:
-            reminder: The reminder to send
-            
-        Returns:
-            bool: True if successfully sent, False otherwise
-        """
-        appointment = reminder.appointment
-        user = appointment.user
-        
-        # Skip if user has no phone
-        if not user.phone:
-            return False
-        
-        # Attempt to send the message
+            return list(result.scalars().all())
+        except SQLAlchemyError as e:
+            raise DatabaseError(f"Error getting pending reminders: {str(e)}")
+
+    @staticmethod
+    async def create(
+        db: AsyncSession,
+        reminder_in: ReminderCreate
+    ) -> Reminder:
+        """Creates a new reminder"""
         try:
-            self.notification_service.send_sms(
-                to_number=user.phone,
-                message=reminder.message
-            )
-            return True
-        except Exception as e:
-            # Log the error but don't fail the entire batch
-            print(f"Error sending reminder {reminder.id}: {str(e)}")
-            return False
-    
-    def get_pending_reminders(self) -> List[Reminder]:
+            reminder = Reminder(**reminder_in.dict())
+            db.add(reminder)
+            await db.commit()
+            await db.refresh(reminder)
+            return reminder
+        except SQLAlchemyError as e:
+            await db.rollback()
+            raise DatabaseError(f"Error creating reminder: {str(e)}")
+
+    @staticmethod
+    async def update(
+        db: AsyncSession,
+        reminder: Reminder,
+        reminder_in: ReminderUpdate
+    ) -> Reminder:
+        """Updates a reminder"""
+        try:
+            update_data = reminder_in.dict(exclude_unset=True)
+            
+            for field, value in update_data.items():
+                setattr(reminder, field, value)
+            
+            db.add(reminder)
+            await db.commit()
+            await db.refresh(reminder)
+            return reminder
+        except SQLAlchemyError as e:
+            await db.rollback()
+            raise DatabaseError(f"Error updating reminder: {str(e)}")
+
+    @staticmethod
+    async def delete(db: AsyncSession, reminder: Reminder) -> None:
+        """Deletes a reminder"""
+        try:
+            await db.delete(reminder)
+            await db.commit()
+        except SQLAlchemyError as e:
+            await db.rollback()
+            raise DatabaseError(f"Error deleting reminder: {str(e)}")
+            
+    @staticmethod
+    async def mark_as_sent(db: AsyncSession, reminder: Reminder) -> Reminder:
+        """Marks a reminder as sent"""
+        try:
+            reminder.status = ReminderStatus.SENT
+            reminder.sent_at = datetime.utcnow()
+            
+            db.add(reminder)
+            await db.commit()
+            await db.refresh(reminder)
+            return reminder
+        except SQLAlchemyError as e:
+            await db.rollback()
+            raise DatabaseError(f"Error marking reminder as sent: {str(e)}")
+
+    @staticmethod
+    async def create_appointment_reminder(
+        db: AsyncSession, 
+        appointment_id: int,
+        hours_before: int = 24
+    ) -> Reminder:
         """
-        Get all pending reminders.
-        
-        Returns:
-            List[Reminder]: List of pending reminders
-        """
-        return self.db.query(Reminder).filter(
-            Reminder.sent == False
-        ).order_by(Reminder.scheduled_time).all()
-    
-    def reschedule_reminders_for_appointment(self, appointment_id: int) -> None:
-        """
-        Delete and reschedule reminders for an appointment.
-        Used when an appointment is rescheduled.
+        Creates a reminder for an appointment
         
         Args:
-            appointment_id: The ID of the appointment to reschedule reminders for
+            db: Database session
+            appointment_id: Appointment ID
+            hours_before: Hours before the appointment to send the reminder
+            
+        Returns:
+            Reminder: The created reminder
         """
-        # Delete existing reminders
-        self.db.query(Reminder).filter(
-            Reminder.appointment_id == appointment_id,
-            Reminder.sent == False
-        ).delete()
+        try:
+            # Get the appointment
+            result = await db.execute(
+                select(Appointment).where(Appointment.id == appointment_id)
+            )
+            appointment = result.scalar_one_or_none()
+            
+            if not appointment:
+                raise ValueError(f"Appointment with ID {appointment_id} not found")
+                
+            # Calculate scheduled time
+            scheduled_time = appointment.datetime - timedelta(hours=hours_before)
+            
+            # Create the reminder
+            reminder_data = ReminderCreate(
+                appointment_id=appointment_id,
+                type="APPOINTMENT",
+                scheduled_time=scheduled_time,
+                status=ReminderStatus.PENDING
+            )
+            
+            return await ReminderService.create(db, reminder_data)
+        except SQLAlchemyError as e:
+            await db.rollback()
+            raise DatabaseError(f"Error creating appointment reminder: {str(e)}")
+            
+    @staticmethod
+    async def cancel_appointment_reminders(db: AsyncSession, appointment_id: int) -> None:
+        """
+        Cancels all pending reminders for an appointment
         
-        # Get the appointment and call the appointment service to reschedule
-        from app.services.appointment_service import AppointmentService
-        appointment_service = AppointmentService(self.db)
-        appointment = self.db.query(appointment_service.get_appointment_by_id(appointment_id))
-        
-        # Only reschedule if the appointment exists and is still active
-        if appointment and appointment.status in [AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED]:
-            appointment_service._schedule_reminders(appointment) 
+        Args:
+            db: Database session
+            appointment_id: Appointment ID
+        """
+        try:
+            # Get all pending reminders for the appointment
+            result = await db.execute(
+                select(Reminder).where(
+                    and_(
+                        Reminder.appointment_id == appointment_id,
+                        Reminder.status == ReminderStatus.PENDING
+                    )
+                )
+            )
+            reminders = list(result.scalars().all())
+            
+            # Cancel each reminder
+            for reminder in reminders:
+                reminder.status = ReminderStatus.CANCELLED
+                db.add(reminder)
+                
+            await db.commit()
+        except SQLAlchemyError as e:
+            await db.rollback()
+            raise DatabaseError(f"Error cancelling appointment reminders: {str(e)}") 

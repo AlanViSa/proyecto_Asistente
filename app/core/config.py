@@ -18,6 +18,10 @@ from pydantic import (
 from pydantic_settings import BaseSettings, SettingsConfigDict
 import os
 import secrets
+from pathlib import Path
+
+# Get the base directory of the project
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 class Settings(BaseSettings):
     """
@@ -33,21 +37,29 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
     
-    # Database
-    DATABASE_URL: str
+    # Database - default to SQLite for development, can be overridden in .env
+    DATABASE_URL: str = f"sqlite:///{BASE_DIR}/salon_assistant.db"
+    
+    # Database Connection Pool Settings
+    DB_POOL_SIZE: int = 5
+    DB_MAX_OVERFLOW: int = 10
+    DB_POOL_TIMEOUT: int = 30
+    DB_POOL_RECYCLE: int = 1800
     
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
     
     # CORS
     CORS_ORIGINS: List[str] = ["*"]
+    ALLOWED_ORIGINS: List[str] = ["http://localhost:3000"]
     
     # Rate Limiting
     RATE_LIMIT: int = 60  # Requests per minute
+    RATE_LIMIT_PER_MINUTE: int = 60
     
     # Business Hours
-    HORARIO_APERTURA: str = "09:00"
-    HORARIO_CIERRE: str = "19:00"
+    BUSINESS_HOURS_START: str = "09:00"
+    BUSINESS_HOURS_END: str = "19:00"
     
     # Twilio Configuration
     TWILIO_ACCOUNT_SID: Optional[str] = None
@@ -71,17 +83,11 @@ class Settings(BaseSettings):
     SSL_KEY: Optional[str] = None
     
     # Application
-    APP_NAME: str = Field(default="Asistente Virtual Salón")
+    APP_NAME: str = Field(default="Salon Virtual Assistant")
     BUSINESS_NAME: str = Field(default="Salon Assistant")
     TIMEZONE: str = Field(default="America/New_York")
     DEBUG: bool = Field(default=True)
     ENVIRONMENT: str = Field(default="development")
-    
-    # Database
-    DB_POOL_SIZE: int = 5
-    DB_MAX_OVERFLOW: int = 10
-    DB_POOL_TIMEOUT: int = 30
-    DB_POOL_RECYCLE: int = 1800
     
     # Logging
     LOG_LEVEL: str = "INFO"
@@ -92,7 +98,7 @@ class Settings(BaseSettings):
     GRAFANA_PORT: int = 3000
     
     # Localization
-    LOCALE: str = Field(default="es_CO")
+    LOCALE: str = Field(default="en_US")
 
     @validator("ENVIRONMENT")
     def validate_environment(cls, v):
@@ -101,7 +107,7 @@ class Settings(BaseSettings):
             raise ValueError(f"Environment must be one of {allowed}")
         return v
     
-    @validator("HORARIO_APERTURA", "HORARIO_CIERRE")
+    @validator("BUSINESS_HOURS_START", "BUSINESS_HOURS_END")
     def validate_business_hours(cls, v):
         try:
             hour, minute = map(int, v.split(":"))

@@ -1,20 +1,26 @@
 """
-API endpoints for client authentication
+API endpoints for authentication
 
 This module provides endpoints for:
-- Client login
+- User/Client login
 - Registration of new clients
 - JWT token verification
 """
 from datetime import timedelta
-from typing import Any
+from typing import Any, Union
 from fastapi import APIRouter, Depends, HTTPException, status, Body
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
 from app.core.config import settings
-from app.core.security import authenticate_user, create_access_token, get_current_user, verify_password
+from app.core.security import (
+    authenticate_user, 
+    create_access_token, 
+    get_current_user, 
+    get_password_hash,
+    verify_password
+)
 from app.models.client import Client
 from app.schemas.client import ClientCreate, ClientResponse
 from app.schemas.token import Token
@@ -28,11 +34,11 @@ router = APIRouter()
     response_model=Token,
     summary="Login",
     description="""
-    Endpoint to authenticate a client and obtain a JWT token.
+    Endpoint to authenticate a user/client and obtain a JWT token.
     
     Parameters:
-    - **username**: Client email
-    - **password**: Client password
+    - **username**: Email
+    - **password**: Password
     
     Response:
     - **access_token**: JWT token for authentication
@@ -61,11 +67,11 @@ router = APIRouter()
             }
         },
         400: {
-            "description": "Inactive client",
+            "description": "Inactive user",
             "content": {
                 "application/json": {
                     "example": {
-                        "detail": "Inactive client"
+                        "detail": "Inactive user account"
                     }
                 }
             }
@@ -78,12 +84,13 @@ async def login(
 ) -> Any:
     """
     OAuth2 compatible token login, get an access token for future requests.
+    Works for both User and Client authentication.
     """
-    # Find the user with the given email
-    user = db.query(User).filter(User.email == form_data.username).first()
+    # Authenticate user using the unified function
+    user = authenticate_user(db, form_data.username, form_data.password)
     
-    # If user doesn't exist or password is incorrect, raise an exception
-    if not user or not verify_password(form_data.password, user.hashed_password):
+    # If authentication failed, raise an exception
+    if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
@@ -94,7 +101,7 @@ async def login(
     if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, 
-            detail="Inactive user"
+            detail="Inactive user account"
         )
     
     # Create access token with expiry as configured in settings
@@ -108,7 +115,7 @@ async def login(
 
 @router.post(
     "/register",
-    response_model=UserResponse,
+    response_model=ClientResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Register Client",
     description="""
@@ -151,40 +158,47 @@ async def login(
     }
 )
 async def register(
-    user_in: UserCreate,
+    client_in: ClientCreate,
     db: Session = Depends(get_db)
 ) -> Any:
     """
-    Register a new user.
+    Register a new client.
     """
+    # Check if a client with the same email already exists
+    client = db.query(Client).filter(Client.email == client_in.email).first()
+    if client:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already registered in client database"
+        )
+    
     # Check if a user with the same email already exists
-    user = db.query(User).filter(User.email == user_in.email).first()
+    user = db.query(User).filter(User.email == client_in.email).first()
     if user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="A user with this email already exists",
+            detail="Email already registered in user database"
         )
     
-    # Create a new user with the provided data
-    user = User(
-        email=user_in.email,
-        hashed_password=get_password_hash(user_in.password),
-        full_name=user_in.full_name,
-        phone=user_in.phone,
+    # Create a new client with the provided data
+    client = Client(
+        email=client_in.email,
+        hashed_password=get_password_hash(client_in.password),
+        full_name=client_in.full_name,
+        phone=client_in.phone,
         is_active=True,
         is_admin=False,
     )
     
-    # Add the user to the database and commit the changes
-    db.add(user)
+    # Add the client to the database and commit the changes
+    db.add(client)
     db.commit()
-    db.refresh(user)
+    db.refresh(client)
     
-    return user
+    return client
 
 @router.post(
     "/test-token",
-    response_model=ClientResponse,
     summary="Test Token",
     description="""
     Endpoint to verify the validity of a JWT token.
@@ -193,7 +207,7 @@ async def register(
     - **Authorization**: Bearer JWT token
     
     Response:
-    - Authenticated client data
+    - Authenticated user/client data
     """,
     responses={
         200: {
@@ -202,8 +216,8 @@ async def register(
                 "application/json": {
                     "example": {
                         "id": 1,
-                        "email": "client@example.com",
-                        "full_name": "John Doe",
+                        "email": "user@example.com",
+                        "full_name": "Test User",
                         "phone": "+1-555-123-4567",
                         "is_active": True
                     }
@@ -223,9 +237,12 @@ async def register(
     }
 )
 async def test_token(
-    current_user: Client = Depends(get_current_user)
+    current_user: Union[User, Client] = Depends(get_current_user)
 ) -> Any:
     """
-    Endpoint to test JWT token
+    Endpoint to test JWT token and determine user type
     """
-    return current_user 
+    if isinstance(current_user, User):
+        return UserResponse.from_orm(current_user)
+    else:
+        return ClientResponse.from_orm(current_user) 

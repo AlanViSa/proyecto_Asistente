@@ -16,13 +16,10 @@ class Reminder(Base):
     __tablename__ = "reminders"
 
     id = Column(Integer, primary_key=True, index=True)
-    message = Column(Text, nullable=True)
-    scheduled_time = Column(DateTime(timezone=True), nullable=False, index=True)
-    sent = Column(Boolean, default=False, nullable=False, index=True)
-    sent_at = Column(DateTime(timezone=True), nullable=True)
-    
-    # Foreign keys
     appointment_id = Column(Integer, ForeignKey("appointments.id"), nullable=False, index=True)
+    scheduled_time = Column(DateTime(timezone=True), nullable=False, index=True)
+    sent = Column(Boolean, default=False, nullable=False)
+    message = Column(Text, nullable=True)
     
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -32,4 +29,4 @@ class Reminder(Base):
     appointment = relationship("Appointment", back_populates="reminders")
     
     def __repr__(self):
-        return f"<Reminder {self.id} for appointment {self.appointment_id}>" 
+        return f"<Reminder for appointment {self.appointment_id}>" 

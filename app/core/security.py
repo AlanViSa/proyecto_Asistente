@@ -10,9 +10,10 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
-from app.core.config import settings
 from app.db.database import get_db
 from app.models.user import User
+from app.models.client import Client
+from app.core.config import settings
 
 
 # Password hashing
@@ -36,6 +37,24 @@ def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
 
 
+def authenticate_user(db: Session, email: str, password: str) -> Optional[Union[User, Client]]:
+    """
+    Authenticate a user by email and password.
+    Tries both User and Client models.
+    """
+    # First try to authenticate as User (staff)
+    user = db.query(User).filter(User.email == email).first()
+    if user and verify_password(password, user.hashed_password):
+        return user
+    
+    # Then try to authenticate as Client
+    client = db.query(Client).filter(Client.email == email).first()
+    if client and verify_password(password, client.hashed_password):
+        return client
+    
+    return None
+
+
 def create_access_token(subject: Union[str, Any], expires_delta: Optional[timedelta] = None) -> str:
     """
     Create a JWT access token.
@@ -55,9 +74,9 @@ def create_access_token(subject: Union[str, Any], expires_delta: Optional[timede
 def get_current_user(
     db: Session = Depends(get_db),
     token: str = Depends(oauth2_scheme)
-) -> User:
+) -> Union[User, Client]:
     """
-    Validate token and return current user.
+    Validate token and return current user (either User or Client).
     """
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -75,18 +94,25 @@ def get_current_user(
     except jwt.JWTError:
         raise credentials_exception
         
+    # Try to get User first
     user = db.query(User).filter(User.id == user_id).first()
-    if user is None:
-        raise credentials_exception
+    if user:
+        return user
     
-    return user
+    # If not a User, try Client
+    client = db.query(Client).filter(Client.id == user_id).first()
+    if client:
+        return client
+    
+    raise credentials_exception
 
 
 def get_current_active_user(
-    current_user: User = Depends(get_current_user),
-) -> User:
+    current_user: Union[User, Client] = Depends(get_current_user),
+) -> Union[User, Client]:
     """
     Get current user and verify that user is active.
+    Works for both User and Client models.
     """
     if not current_user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
@@ -94,10 +120,11 @@ def get_current_active_user(
 
 
 def get_current_active_admin(
-    current_user: User = Depends(get_current_user),
-) -> User:
+    current_user: Union[User, Client] = Depends(get_current_user),
+) -> Union[User, Client]:
     """
     Get current user and verify that user is an active admin.
+    Works for both User and Client models.
     """
     if not current_user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")

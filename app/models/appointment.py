@@ -18,6 +18,7 @@ class AppointmentStatus(str, enum.Enum):
     CONFIRMED = "CONFIRMED"
     COMPLETED = "COMPLETED"
     CANCELED = "CANCELED"
+    NO_SHOW = "NO_SHOW"
 
 class Appointment(Base):
     """Appointment model for scheduling"""
@@ -45,4 +46,7 @@ class Appointment(Base):
     # Relationships
     client = relationship("Client", back_populates="appointments")
     service = relationship("Service", back_populates="appointments")
-    reminders = relationship("Reminder", back_populates="appointment", cascade="all, delete-orphan") 
+    reminders = relationship("Reminder", back_populates="appointment", cascade="all, delete-orphan")
+    
+    def __repr__(self):
+        return f"<Appointment {self.id} for client {self.client_id} on {self.datetime}>" 

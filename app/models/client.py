@@ -3,11 +3,18 @@ Client database model definition for ORM
 """
 from sqlalchemy import Boolean, Column, Integer, String, DateTime, JSON
 from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
+from typing import List, TYPE_CHECKING
 from datetime import datetime
 import pytz
 from app.db.database import Base
 
 eastern = pytz.timezone('America/New_York')
+
+# Import relationships if needed
+if TYPE_CHECKING:
+    from app.models.appointment import Appointment
+    from app.models.notification_preference import NotificationPreference
 
 class Client(Base):
     """Client model for user accounts"""
@@ -25,15 +32,18 @@ class Client(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     last_login = Column(DateTime(timezone=True), nullable=True)
 
-    # Relaciones
-    citas: Mapped[List["Cita"]] = relationship(
-        "Cita",
-        back_populates="cliente",
+    # Relationships
+    appointments = relationship(
+        "Appointment",
+        back_populates="client",
         cascade="all, delete-orphan"
     )
-    preferencias_notificacion: Mapped["PreferenciasNotificacion"] = relationship(
-        "PreferenciasNotificacion",
-        back_populates="cliente",
+    notification_preferences = relationship(
+        "NotificationPreference",
+        back_populates="client",
         uselist=False,
         cascade="all, delete-orphan"
-    ) 
+    )
+    
+    def __repr__(self):
+        return f"<Client {self.email}>" 

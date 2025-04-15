@@ -1,4 +1,16 @@
 """
+Alias for ClientService for backwards compatibility
+"""
+from app.services.client_service import ClientService
+
+# Create Spanish alias for the service
+ClienteService = ClientService
+
+# Legacy imports for backward compatibility
+from app.models.client import Client as Cliente
+from app.services.notification_preference_service import NotificationPreferenceService as PreferenciasNotificacionService
+
+"""
 Service for managing clients
 """
 from typing import List, Optional
@@ -7,9 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.db.database import DatabaseError
-from app.models.cliente import Cliente
 from app.schemas.cliente import ClienteCreate, ClienteUpdate
-from app.services.preferencias_notificacion import NotificationPreferencesService
 
 class ClienteService:
     """Service for CRUD operations on clients"""

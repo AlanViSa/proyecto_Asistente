@@ -1,10 +1,17 @@
-from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy.ext.asyncio import AsyncAttrs
+"""
+Database base module
 
-class Base(AsyncAttrs, DeclarativeBase):
-    """Clase base para todos los modelos SQLAlchemy"""
-    pass
+Import all models here for Alembic to discover them
+"""
 
-# Importar todos los modelos aquí para que Alembic los detecte
-from app.models.cliente import Cliente
-from app.models.cita import Cita 
+from app.db.database import Base
+
+# Import all models here for Alembic to discover them
+from app.models.client import Client
+from app.models.user import User
+from app.models.appointment import Appointment
+from app.models.service import Service
+from app.models.reminder import Reminder
+from app.models.notification_preference import NotificationPreference
+from app.models.blocked_schedule import BlockedSchedule
+from app.models.health import Health 

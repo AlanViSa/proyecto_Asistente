@@ -2,6 +2,10 @@
 Alias for AppointmentService for backwards compatibility
 """
 from app.services.appointment_service import AppointmentService
+from typing import List, Optional, Tuple, Set
+from datetime import datetime, timedelta, time
+from zoneinfo import ZoneInfo
+from sqlalchemy.ext.asyncio import AsyncSession
 
 # Create Spanish alias for the service
 CitaService = AppointmentService
@@ -9,29 +13,30 @@ CitaService = AppointmentService
 # Legacy imports for backward compatibility 
 from app.models.appointment import Appointment as Cita, AppointmentStatus as EstadoCita
 from app.models.client import Client as Cliente
+from app.models.service import Service as Servicio
 from app.services.blocked_schedule_service import BlockedScheduleService as HorarioBloqueadoService
+from app.services.notification_service import NotificationService as ServicioNotificacion, NotificationTemplate as PlantillaNotificacion
+
+# Legacy type aliases for backward compatibility
+from app.schemas.appointment import AppointmentCreate as CitaCreate, AppointmentUpdate as CitaUpdate
+
+# Legacy constants for backward compatibility
+DIAS_NO_LABORABLES = {5, 6}  # Saturday and Sunday
+
+# Add attributes to CitaService for backward compatibility
+CitaService.DIAS_NO_LABORABLES = DIAS_NO_LABORABLES
 
 """
 Servicio para la gestión de citas
 """
-from typing import List, Optional, Tuple, Set
-from datetime import datetime, timedelta, time
-from zoneinfo import ZoneInfo
 from sqlalchemy import select, and_, or_, not_
 from sqlalchemy.orm import joinedload
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.db.database import DatabaseError
-from app.schemas.cita import CitaCreate, CitaUpdate
-from app.core.config import settings
-from app.services.notification import NotificationService, NotificationTemplate
 
 class CitaService:
     """Servicio para operaciones CRUD de citas"""
-
-    # Días de la semana (0 = Lunes, 6 = Domingo)
-    DIAS_NO_LABORABLES: Set[int] = {5, 6}  # Por defecto: Sábado y Domingo
 
     @staticmethod
     def _parse_business_hours() -> Tuple[time, time]:

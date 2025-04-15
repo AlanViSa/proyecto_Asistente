@@ -1,21 +1,18 @@
 """
 Service database model definition for ORM
 """
-from sqlalchemy import Boolean, Column, Integer, String, Float, DateTime, Text
+from sqlalchemy import Boolean, Column, Integer, String, DateTime, Float, Text
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
-import pytz
 
 from app.db.database import Base
 
-eastern = pytz.timezone('America/New_York')
-
 class Service(Base):
-    """Service model for salon services"""
+    """Service model for salon services offered"""
     __tablename__ = "services"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(100), nullable=False, index=True)
+    name = Column(String, nullable=False, index=True)
     description = Column(Text, nullable=True)
     price = Column(Float, nullable=False)
     duration_minutes = Column(Integer, nullable=False)
