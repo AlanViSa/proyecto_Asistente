@@ -1,5 +1,5 @@
 """
-Servicio para la gestión de autenticación y tokens
+Authentication and token management service
 """
 from datetime import datetime, timedelta
 from typing import Optional
@@ -9,28 +9,28 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.db.database import DatabaseError
-from app.models.cliente import Cliente
+from app.models.client import Client
 from app.schemas.token import TokenPayload
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 class AuthService:
-    """Servicio para operaciones de autenticación"""
+    """Service for authentication operations"""
 
     @staticmethod
     def create_access_token(*, data: dict, expires_delta: Optional[timedelta] = None) -> str:
         """
-        Crea un token JWT de acceso
+        Creates a JWT access token
         
         Args:
-            data: Datos a incluir en el token
-            expires_delta: Tiempo de expiración opcional
+            data: Data to include in the token
+            expires_delta: Optional expiration time
             
         Returns:
-            str: Token JWT generado
+            str: Generated JWT token
             
         Raises:
-            JWTError: Si hay un error al crear el token
+            JWTError: If there is an error creating the token
         """
         to_encode = data.copy()
         if expires_delta:
@@ -47,48 +47,48 @@ class AuthService:
             )
             return encoded_jwt
         except JWTError as e:
-            raise DatabaseError(f"Error al crear token de acceso: {str(e)}")
+            raise DatabaseError(f"Error creating access token: {str(e)}")
 
     @staticmethod
     def verify_password(plain_password: str, hashed_password: str) -> bool:
         """
-        Verifica si una contraseña coincide con su hash
+        Verifies if a password matches its hash
         
         Args:
-            plain_password: Contraseña en texto plano
-            hashed_password: Hash de la contraseña
+            plain_password: Plain text password
+            hashed_password: Password hash
             
         Returns:
-            bool: True si la contraseña coincide, False en caso contrario
+            bool: True if password matches, False otherwise
         """
         return pwd_context.verify(plain_password, hashed_password)
 
     @staticmethod
     def get_password_hash(password: str) -> str:
         """
-        Genera un hash para una contraseña
+        Generates a hash for a password
         
         Args:
-            password: Contraseña en texto plano
+            password: Plain text password
             
         Returns:
-            str: Hash de la contraseña
+            str: Password hash
         """
         return pwd_context.hash(password)
 
     @staticmethod
     def decode_token(token: str) -> Optional[TokenPayload]:
         """
-        Decodifica un token JWT
+        Decodes a JWT token
         
         Args:
-            token: Token JWT a decodificar
+            token: JWT token to decode
             
         Returns:
-            Optional[TokenPayload]: Datos del token decodificado o None si es inválido
+            Optional[TokenPayload]: Decoded token data or None if invalid
             
         Raises:
-            JWTError: Si hay un error al decodificar el token
+            JWTError: If there is an error decoding the token
         """
         try:
             payload = jwt.decode(
@@ -99,47 +99,47 @@ class AuthService:
             token_data = TokenPayload(**payload)
             return token_data
         except JWTError as e:
-            raise DatabaseError(f"Error al decodificar token: {str(e)}")
+            raise DatabaseError(f"Error decoding token: {str(e)}")
 
     @staticmethod
-    async def authenticate_cliente(
+    async def authenticate_client(
         db: AsyncSession, 
         email: str, 
         password: str
-    ) -> Optional[Cliente]:
+    ) -> Optional[Client]:
         """
-        Autentica un cliente por email y contraseña
+        Authenticates a client by email and password
         
         Args:
-            db: Sesión de base de datos
-            email: Email del cliente
-            password: Contraseña del cliente
+            db: Database session
+            email: Client email
+            password: Client password
             
         Returns:
-            Optional[Cliente]: Cliente autenticado o None si las credenciales son inválidas
+            Optional[Client]: Authenticated client or None if credentials are invalid
         """
-        from app.services.cliente import ClienteService
+        from app.services.client_service import ClientService
         
         try:
-            cliente = await ClienteService.get_by_email(db, email)
-            if not cliente:
+            client = await ClientService.get_by_email(db, email)
+            if not client:
                 return None
-            if not AuthService.verify_password(password, cliente.hashed_password):
+            if not AuthService.verify_password(password, client.hashed_password):
                 return None
-            return cliente
+            return client
         except Exception as e:
-            raise DatabaseError(f"Error al autenticar cliente: {str(e)}")
+            raise DatabaseError(f"Error authenticating client: {str(e)}")
 
     @staticmethod
     def is_token_expired(token: str) -> bool:
         """
-        Verifica si un token JWT ha expirado
+        Checks if a JWT token has expired
         
         Args:
-            token: Token JWT a verificar
+            token: JWT token to check
             
         Returns:
-            bool: True si el token ha expirado, False en caso contrario
+            bool: True if token has expired, False otherwise
         """
         try:
             token_data = AuthService.decode_token(token)

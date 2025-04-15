@@ -7,7 +7,7 @@ import json
 from datetime import datetime, timedelta
 from app.core.config import settings
 from app.db.database import async_session_maker
-from app.services.recordatorio import RecordatorioService
+from app.services.reminder_service import ReminderService
 
 # Configurar logging
 logging.basicConfig(
@@ -29,11 +29,11 @@ async def send_reminders():
     try:
         async with async_session_maker() as db:
             # Send reminders
-            results = await RecordatorioService.send_reminders(db)
+            results = await ReminderService.send_reminders(db)
             
             # Get statistics for the last 24 hours
             end_time = datetime.now()
-            stats = await RecordatorioService.get_reminder_statistics(
+            stats = await ReminderService.get_reminder_statistics(
                 db,
                 start_date=end_time - timedelta(hours=24),
                 end_date=end_time

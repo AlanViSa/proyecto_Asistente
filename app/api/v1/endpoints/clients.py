@@ -13,8 +13,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db, get_current_cliente, get_current_admin
-from app.services.cliente import ClienteService
+from app.api.deps import get_db, get_current_client, get_current_admin
+from app.services.client_service import ClientService
 from app.schemas.cliente import (
     Cliente,
     ClienteCreate,
@@ -25,7 +25,7 @@ from app.schemas.cliente import (
 )
 from app.core.security import get_current_user, get_password_hash
 from app.db.database import get_db as db_session
-from app.models.cliente import Client
+from app.models.client import Client
 
 router = APIRouter()
 

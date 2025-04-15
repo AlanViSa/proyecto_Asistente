@@ -1,5 +1,5 @@
 """
-Dependencias para la API
+API dependencies
 """
 from typing import AsyncGenerator, Optional
 from fastapi import Depends, HTTPException, status
@@ -8,27 +8,28 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from jose import jwt
 
 from app.core.config import settings
+from app.core.security import oauth2_scheme
 from app.db.database import get_async_db
+from app.models.client import Client
+from app.services.client_service import ClientService
 from app.services.auth import AuthService
-from app.services.cliente import ClienteService
-from app.models.cliente import Cliente
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/login")
 
-# Reexportar get_async_db como get_db para mantener compatibilidad
+# Re-export get_async_db as get_db for compatibility
 get_db = get_async_db
 
-async def get_current_cliente(
+async def get_current_client(
     db: AsyncSession = Depends(get_db),
     token: str = Depends(oauth2_scheme)
-) -> Cliente:
+) -> Client:
     """
-    Dependencia para obtener el cliente actual basado en el token JWT.
-    Valida el token y retorna el cliente autenticado.
+    Dependency to get current client based on JWT token.
+    Validates the token and returns the authenticated client.
     """
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="No se pudieron validar las credenciales",
+        detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
     
@@ -39,25 +40,38 @@ async def get_current_cliente(
     except jwt.JWTError:
         raise credentials_exception
         
-    cliente = await ClienteService.get_by_email(db, token_data.sub)
-    if cliente is None:
+    client = await ClientService.get_by_email(db, token_data.sub)
+    if client is None:
         raise credentials_exception
-    if not cliente.activo:
+    if not client.is_active:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cliente inactivo"
+            detail="Inactive client"
         )
-    return cliente
+    return client
 
-async def get_current_active_cliente(
-    current_cliente: Cliente = Depends(get_current_cliente),
-) -> Cliente:
+async def get_current_active_client(
+    current_client: Client = Depends(get_current_client),
+) -> Client:
     """
-    Dependencia para obtener el cliente actual y verificar que esté activo.
+    Dependency to get the current client and verify they are active.
     """
-    if not current_cliente.activo:
+    if not current_client.is_active:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cliente inactivo"
+            detail="Inactive client"
         )
-    return current_cliente 
+    return current_client
+
+async def get_current_admin(
+    current_client: Client = Depends(get_current_client),
+) -> Client:
+    """
+    Dependency to get the current client and verify they are an admin.
+    """
+    if not current_client.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not enough permissions"
+        )
+    return current_client 
