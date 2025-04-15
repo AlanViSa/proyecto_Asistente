@@ -1,76 +1,83 @@
 """
-Esquemas para la validación de datos de preferencias de notificación
+Schemas for validating notification preferences data.
 """
 from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel, Field, field_validator
 from zoneinfo import ZoneInfo, available_timezones
 
+
 class PreferenciasNotificacionBase(BaseModel):
-    """Esquema base para preferencias de notificación"""
-    email_habilitado: bool = Field(True, description="Si las notificaciones por email están habilitadas")
-    sms_habilitado: bool = Field(False, description="Si las notificaciones por SMS están habilitadas")
-    whatsapp_habilitado: bool = Field(False, description="Si las notificaciones por WhatsApp están habilitadas")
-    recordatorio_24h: bool = Field(True, description="Si el recordatorio de 24 horas está habilitado")
-    recordatorio_2h: bool = Field(True, description="Si el recordatorio de 2 horas está habilitado")
-    zona_horaria: str = Field(
-        "America/Mexico_City",
-        description="Zona horaria del cliente para las notificaciones"
+    """Base schema for notification preferences."""
+
+    email_enabled: bool = Field(True, description="Whether email notifications are enabled.")
+    sms_enabled: bool = Field(False, description="Whether SMS notifications are enabled.")
+    whatsapp_enabled: bool = Field(False, description="Whether WhatsApp notifications are enabled.")
+    reminder_24h: bool = Field(True, description="Whether the 24-hour reminder is enabled.")
+    reminder_2h: bool = Field(True, description="Whether the 2-hour reminder is enabled.")
+    timezone: str = Field(
+        "US/Eastern", description="Client's timezone for notifications."
     )
 
-    @field_validator("zona_horaria")
+    @field_validator("timezone")
     @classmethod
-    def validar_zona_horaria(cls, v: str) -> str:
-        """Valida que la zona horaria sea válida"""
+    def validate_timezone(cls, v: str) -> str:
+        """Validates that the timezone is valid."""
         if v not in available_timezones():
-            raise ValueError("Zona horaria no válida")
+            raise ValueError("Invalid timezone.")
         return v
 
-    @field_validator("email_habilitado", "sms_habilitado", "whatsapp_habilitado")
+    @field_validator("email_enabled", "sms_enabled", "whatsapp_enabled")
     @classmethod
-    def validar_al_menos_un_canal(cls, v: bool, values: dict) -> bool:
-        """Valida que al menos un canal de notificación esté habilitado"""
+    def validate_at_least_one_channel(cls, v: bool, values: dict) -> bool:
+        """Validates that at least one notification channel is enabled."""
         if not v and not any(
             values.data.get(canal, False)
-            for canal in ["email_habilitado", "sms_habilitado", "whatsapp_habilitado"]
+            for canal in ["email_enabled", "sms_enabled", "whatsapp_enabled"]
             if canal in values.data
         ):
-            raise ValueError("Al menos un canal de notificación debe estar habilitado")
+            raise ValueError("At least one notification channel must be enabled.")
         return v
 
     model_config = {
         "json_schema_extra": {
             "example": {
-                "email_habilitado": True,
-                "sms_habilitado": False,
-                "whatsapp_habilitado": False,
-                "recordatorio_24h": True,
-                "recordatorio_2h": True,
-                "zona_horaria": "America/Mexico_City"
+                "email_enabled": True,
+                "sms_enabled": False,
+                "whatsapp_enabled": False,
+                "reminder_24h": True,
+                "reminder_2h": True,
+                "timezone": "US/Eastern",
             }
         }
     }
 
+
 class PreferenciasNotificacionCreate(PreferenciasNotificacionBase):
-    """Esquema para crear preferencias de notificación"""
-    cliente_id: int = Field(..., description="ID del cliente")
+    """Schema for creating notification preferences."""
+
+    client_id: int = Field(..., description="Client ID.")
+
 
 class PreferenciasNotificacionUpdate(PreferenciasNotificacionBase):
-    """Esquema para actualizar preferencias de notificación"""
-    email_habilitado: Optional[bool] = Field(None, description="Si las notificaciones por email están habilitadas")
-    sms_habilitado: Optional[bool] = Field(None, description="Si las notificaciones por SMS están habilitadas")
-    whatsapp_habilitado: Optional[bool] = Field(None, description="Si las notificaciones por WhatsApp están habilitadas")
-    recordatorio_24h: Optional[bool] = Field(None, description="Si el recordatorio de 24 horas está habilitado")
-    recordatorio_2h: Optional[bool] = Field(None, description="Si el recordatorio de 2 horas está habilitado")
-    zona_horaria: Optional[str] = Field(None, description="Zona horaria del cliente para las notificaciones")
+    """Schema for updating notification preferences."""
+
+    email_enabled: Optional[bool] = Field(None, description="Whether email notifications are enabled.")
+    sms_enabled: Optional[bool] = Field(None, description="Whether SMS notifications are enabled.")
+    whatsapp_enabled: Optional[bool] = Field(None, description="Whether WhatsApp notifications are enabled.")
+    reminder_24h: Optional[bool] = Field(None, description="Whether the 24-hour reminder is enabled.")
+    reminder_2h: Optional[bool] = Field(None, description="Whether the 2-hour reminder is enabled.")
+    timezone: Optional[str] = Field(None, description="Client's timezone for notifications.")
+
 
 class PreferenciasNotificacion(PreferenciasNotificacionBase):
-    """Esquema para respuesta de preferencias de notificación"""
+    """Schema for notification preferences response."""
+
     id: int
-    cliente_id: int
+    client_id: int
     created_at: datetime
     updated_at: datetime
 
     model_config = {
         "from_attributes": True
-    } 
+    }

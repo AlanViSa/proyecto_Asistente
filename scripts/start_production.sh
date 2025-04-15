@@ -1,14 +1,14 @@
 #!/bin/bash
 
-# Verificar que estamos en producción
+# Verify that we are in production
 if [ "$ENVIRONMENT" != "production" ]; then
-    echo "Este script solo debe ejecutarse en producción"
+    echo "This script should only be executed in production"
     exit 1
 fi
 
-# Verificar variables de entorno críticas
+# Verify critical environment variables
 required_vars=(
-    "DATABASE_URL"
+    "DATABASE_URL"    
     "OPENAI_API_KEY"
     "TWILIO_ACCOUNT_SID"
     "TWILIO_AUTH_TOKEN"
@@ -17,21 +17,21 @@ required_vars=(
 )
 
 for var in "${required_vars[@]}"; do
-    if [ -z "${!var}" ]; then
-        echo "Error: La variable de entorno $var no está configurada"
+    if [ -z "${!var}" ]; then    
+        echo "Error: The environment variable $var is not configured"
         exit 1
     fi
 done
 
-# Crear directorio de logs si no existe
+# Create logs directory if it doesn't exist
 mkdir -p /var/log/salon
 
-# Aplicar migraciones de base de datos
-echo "Aplicando migraciones de base de datos..."
+# Apply database migrations
+echo "Applying database migrations..."
 alembic upgrade head
 
-# Iniciar la aplicación con Gunicorn
-echo "Iniciando la aplicación..."
+# Start the application with Gunicorn
+echo "Starting the application..."
 gunicorn app.main:app \
     --workers 4 \
     --worker-class uvicorn.workers.UvicornWorker \

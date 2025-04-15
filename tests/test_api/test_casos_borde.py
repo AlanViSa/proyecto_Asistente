@@ -1,5 +1,5 @@
 """
-Pruebas para casos de borde y validaciones especiales
+Tests for edge cases and special validations
 """
 import pytest
 from fastapi.testclient import TestClient
@@ -12,43 +12,43 @@ from app.models.tipo_notificacion import TipoNotificacion
 from app.models.tipo_recordatorio import TipoRecordatorio
 
 def test_crear_cliente_campos_vacios(client: TestClient):
-    """Prueba la creación de un cliente con campos vacíos"""
-    cliente_data = {
+    """Tests creating a client with empty fields"""
+    client_data = {
         "email": "",
-        "nombre": "",
-        "apellido": "",
-        "telefono": "",
-        "direccion": ""
+        "name": "",
+        "surname": "",
+        "phone": "",
+        "address": ""
     }
-    response = client.post("/api/v1/clientes", json=cliente_data)
+    response = client.post("/api/v1/clients", json=client_data)
     assert response.status_code == 422
     data = response.json()
     assert "validation error" in data["detail"][0]["msg"].lower()
 
 def test_crear_cliente_campos_muy_largos(client: TestClient):
-    """Prueba la creación de un cliente con campos muy largos"""
-    cliente_data = {
+    """Tests creating a client with very long fields"""
+    client_data = {
         "email": "a" * 100 + "@email.com",
-        "nombre": "a" * 100,
-        "apellido": "a" * 100,
-        "telefono": "1" * 20,
-        "direccion": "a" * 500
+        "name": "a" * 100,
+        "surname": "a" * 100,
+        "phone": "1" * 20,
+        "address": "a" * 500
     }
-    response = client.post("/api/v1/clientes", json=cliente_data)
+    response = client.post("/api/v1/clients", json=client_data)
     assert response.status_code == 422
     data = response.json()
     assert "validation error" in data["detail"][0]["msg"].lower()
 
 def test_crear_cliente_caracteres_especiales(client: TestClient):
-    """Prueba la creación de un cliente con caracteres especiales"""
-    cliente_data = {
+    """Tests creating a client with special characters"""
+    client_data = {
         "email": "test!@#$%^&*()@email.com",
-        "nombre": "Test!@#$%^&*()",
-        "apellido": "User!@#$%^&*()",
-        "telefono": "123-456-7890",
-        "direccion": "123 Test St!@#$%^&*()"
+        "name": "Test!@#$%^&*()",
+        "surname": "User!@#$%^&*()",
+        "phone": "123-456-7890",
+        "address": "123 Test St!@#$%^&*()"
     }
-    response = client.post("/api/v1/clientes", json=cliente_data)
+    response = client.post("/api/v1/clients", json=client_data)
     assert response.status_code == 422
     data = response.json()
     assert "validation error" in data["detail"][0]["msg"].lower()
@@ -56,175 +56,175 @@ def test_crear_cliente_caracteres_especiales(client: TestClient):
 def test_crear_cita_fecha_pasado(client: TestClient, test_cliente_data, test_servicio_data):
     """Prueba la creación de una cita con fecha en el pasado"""
     # Crear cliente
-    cliente_response = client.post("/api/v1/clientes", json=test_cliente_data)
-    cliente_id = cliente_response.json()["id"]
+    client_response = client.post("/api/v1/clients", json=test_cliente_data)
+    client_id = client_response.json()["id"]
     
     # Crear servicio
-    servicio_response = client.post("/api/v1/servicios", json=test_servicio_data)
-    servicio_id = servicio_response.json()["id"]
+    service_response = client.post("/api/v1/services", json=test_servicio_data)
+    service_id = service_response.json()["id"]
     
     # Crear cita con fecha en el pasado
-    cita_data = {
-        "cliente_id": cliente_id,
-        "servicio_id": servicio_id,
-        "fecha": (datetime.now() - timedelta(days=1)).date().isoformat(),
-        "hora": "10:00",
-        "notas": "Cita de prueba"
+    appointment_data = {
+        "client_id": client_id,
+        "service_id": service_id,
+        "date": (datetime.now() - timedelta(days=1)).date().isoformat(),
+        "time": "10:00",
+        "notes": "Test appointment"
     }
-    response = client.post("/api/v1/citas", json=cita_data)
+    response = client.post("/api/v1/appointments", json=appointment_data)
     assert response.status_code == 400
-    assert "fecha" in response.json()["detail"].lower()
+    assert "date" in response.json()["detail"].lower()
 
 def test_crear_cita_hora_invalida(client: TestClient, test_cliente_data, test_servicio_data):
-    """Prueba la creación de una cita con hora inválida"""
+    """Tests creating an appointment with an invalid time"""
     # Crear cliente
-    cliente_response = client.post("/api/v1/clientes", json=test_cliente_data)
-    cliente_id = cliente_response.json()["id"]
+    client_response = client.post("/api/v1/clients", json=test_cliente_data)
+    client_id = client_response.json()["id"]
     
     # Crear servicio
-    servicio_response = client.post("/api/v1/servicios", json=test_servicio_data)
-    servicio_id = servicio_response.json()["id"]
+    service_response = client.post("/api/v1/services", json=test_servicio_data)
+    service_id = service_response.json()["id"]
     
     # Crear cita con hora inválida
-    cita_data = {
-        "cliente_id": cliente_id,
-        "servicio_id": servicio_id,
-        "fecha": (datetime.now() + timedelta(days=1)).date().isoformat(),
-        "hora": "25:00",
-        "notas": "Cita de prueba"
+    appointment_data = {
+        "client_id": client_id,
+        "service_id": service_id,
+        "date": (datetime.now() + timedelta(days=1)).date().isoformat(),
+        "time": "25:00",
+        "notes": "Test appointment"
     }
-    response = client.post("/api/v1/citas", json=cita_data)
+    response = client.post("/api/v1/appointments", json=appointment_data)
     assert response.status_code == 422
     data = response.json()
     assert "validation error" in data["detail"][0]["msg"].lower()
 
 def test_crear_cita_horario_no_disponible(client: TestClient, test_cliente_data, test_servicio_data):
-    """Prueba la creación de una cita en horario no disponible"""
+    """Tests creating an appointment at a unavailable time"""
     # Crear cliente
-    cliente_response = client.post("/api/v1/clientes", json=test_cliente_data)
-    cliente_id = cliente_response.json()["id"]
+    client_response = client.post("/api/v1/clients", json=test_cliente_data)
+    client_id = client_response.json()["id"]
     
     # Crear servicio
-    servicio_response = client.post("/api/v1/servicios", json=test_servicio_data)
-    servicio_id = servicio_response.json()["id"]
+    service_response = client.post("/api/v1/services", json=test_servicio_data)
+    service_id = service_response.json()["id"]
     
     # Crear primera cita
-    cita_data = {
-        "cliente_id": cliente_id,
-        "servicio_id": servicio_id,
-        "fecha": (datetime.now() + timedelta(days=1)).date().isoformat(),
-        "hora": "10:00",
-        "notas": "Cita de prueba"
+    appointment_data = {
+        "client_id": client_id,
+        "service_id": service_id,
+        "date": (datetime.now() + timedelta(days=1)).date().isoformat(),
+        "time": "10:00",
+        "notes": "Test appointment"
     }
-    client.post("/api/v1/citas", json=cita_data)
+    client.post("/api/v1/appointments", json=appointment_data)
     
     # Intentar crear segunda cita en el mismo horario
-    response = client.post("/api/v1/citas", json=cita_data)
+    response = client.post("/api/v1/appointments", json=appointment_data)
     assert response.status_code == 400
-    assert "horario" in response.json()["detail"].lower()
+    assert "time" in response.json()["detail"].lower()
 
 def test_crear_notificacion_canal_invalido(client: TestClient, test_cliente_data):
-    """Prueba la creación de una notificación con canal inválido"""
+    """Tests creating a notification with an invalid channel"""
     # Crear cliente
-    cliente_response = client.post("/api/v1/clientes", json=test_cliente_data)
-    cliente_id = cliente_response.json()["id"]
+    client_response = client.post("/api/v1/clients", json=test_cliente_data)
+    client_id = client_response.json()["id"]
     
     # Crear notificación con canal inválido
-    notificacion_data = {
-        "cliente_id": cliente_id,
-        "tipo": TipoNotificacion.CITA_PROGRAMADA,
-        "mensaje": "Test notification",
-        "canal": "INVALID_CHANNEL"
+    notification_data = {
+        "client_id": client_id,
+        "type": TipoNotificacion.CITA_PROGRAMADA,
+        "message": "Test notification",
+        "channel": "INVALID_CHANNEL"
     }
-    response = client.post("/api/v1/notificaciones", json=notificacion_data)
+    response = client.post("/api/v1/notifications", json=notification_data)
     assert response.status_code == 422
     data = response.json()
     assert "validation error" in data["detail"][0]["msg"].lower()
 
 def test_crear_recordatorio_frecuencia_invalida(client: TestClient, test_cliente_data):
-    """Prueba la creación de un recordatorio con frecuencia inválida"""
+    """Tests creating a reminder with an invalid frequency"""
     # Crear cliente
-    cliente_response = client.post("/api/v1/clientes", json=test_cliente_data)
-    cliente_id = cliente_response.json()["id"]
+    client_response = client.post("/api/v1/clients", json=test_cliente_data)
+    client_id = client_response.json()["id"]
     
     # Crear recordatorio con frecuencia inválida
-    recordatorio_data = {
-        "cliente_id": cliente_id,
-        "tipo": TipoRecordatorio.CITA,
-        "titulo": "Test reminder",
-        "mensaje": "Test message",
-        "fecha_recordatorio": (datetime.now() + timedelta(days=1)).isoformat(),
-        "frecuencia": "INVALID_FREQUENCY"
+    reminder_data = {
+        "client_id": client_id,
+        "type": TipoRecordatorio.CITA,
+        "title": "Test reminder",
+        "message": "Test message",
+        "reminder_date": (datetime.now() + timedelta(days=1)).isoformat(),
+        "frequency": "INVALID_FREQUENCY"
     }
-    response = client.post("/api/v1/recordatorios", json=recordatorio_data)
+    response = client.post("/api/v1/reminders", json=reminder_data)
     assert response.status_code == 422
     data = response.json()
     assert "validation error" in data["detail"][0]["msg"].lower()
 
 def test_crear_preferencia_notificacion_horario_invalido(client: TestClient, test_cliente_data):
-    """Prueba la creación de una preferencia de notificación con horario inválido"""
+    """Tests creating a notification preference with an invalid time"""
     # Crear cliente
-    cliente_response = client.post("/api/v1/clientes", json=test_cliente_data)
-    cliente_id = cliente_response.json()["id"]
+    client_response = client.post("/api/v1/clients", json=test_cliente_data)
+    client_id = client_response.json()["id"]
     
     # Crear preferencia con horario inválido
-    preferencia_data = {
-        "cliente_id": cliente_id,
-        "tipo_notificacion": TipoNotificacion.CITA_PROGRAMADA,
-        "canales": ["EMAIL"],
-        "horario_inicio": "25:00",
-        "horario_fin": "18:00",
-        "dias_semana": ["LUNES"]
+    preference_data = {
+        "client_id": client_id,
+        "notification_type": TipoNotificacion.CITA_PROGRAMADA,
+        "channels": ["EMAIL"],
+        "start_time": "25:00",
+        "end_time": "18:00",
+        "week_days": ["LUNES"]
     }
-    response = client.post("/api/v1/preferencias-notificacion", json=preferencia_data)
+    response = client.post("/api/v1/notification-preferences", json=preference_data)
     assert response.status_code == 422
     data = response.json()
     assert "validation error" in data["detail"][0]["msg"].lower()
 
 def test_crear_preferencia_notificacion_dias_invalidos(client: TestClient, test_cliente_data):
-    """Prueba la creación de una preferencia de notificación con días inválidos"""
+    """Tests creating a notification preference with invalid days"""
     # Crear cliente
-    cliente_response = client.post("/api/v1/clientes", json=test_cliente_data)
-    cliente_id = cliente_response.json()["id"]
+    client_response = client.post("/api/v1/clients", json=test_cliente_data)
+    client_id = client_response.json()["id"]
     
     # Crear preferencia con días inválidos
-    preferencia_data = {
-        "cliente_id": cliente_id,
-        "tipo_notificacion": TipoNotificacion.CITA_PROGRAMADA,
-        "canales": ["EMAIL"],
-        "horario_inicio": "09:00",
-        "horario_fin": "18:00",
-        "dias_semana": ["INVALID_DAY"]
+    preference_data = {
+        "client_id": client_id,
+        "notification_type": TipoNotificacion.CITA_PROGRAMADA,
+        "channels": ["EMAIL"],
+        "start_time": "09:00",
+        "end_time": "18:00",
+        "week_days": ["INVALID_DAY"]
     }
-    response = client.post("/api/v1/preferencias-notificacion", json=preferencia_data)
+    response = client.post("/api/v1/notification-preferences", json=preference_data)
     assert response.status_code == 422
     data = response.json()
     assert "validation error" in data["detail"][0]["msg"].lower()
 
 def test_crear_servicio_precio_negativo(client: TestClient):
-    """Prueba la creación de un servicio con precio negativo"""
-    servicio_data = {
-        "nombre": "Test Service",
-        "descripcion": "Test Description",
-        "duracion": 30,
-        "precio": -100,
-        "estado": "ACTIVO"
+    """Tests creating a service with a negative price"""
+    service_data = {
+        "name": "Test Service",
+        "description": "Test Description",
+        "duration": 30,
+        "price": -100,
+        "state": "ACTIVO"
     }
-    response = client.post("/api/v1/servicios", json=servicio_data)
+    response = client.post("/api/v1/services", json=service_data)
     assert response.status_code == 422
     data = response.json()
     assert "validation error" in data["detail"][0]["msg"].lower()
 
 def test_crear_servicio_duracion_negativa(client: TestClient):
-    """Prueba la creación de un servicio con duración negativa"""
-    servicio_data = {
-        "nombre": "Test Service",
-        "descripcion": "Test Description",
-        "duracion": -30,
-        "precio": 100,
-        "estado": "ACTIVO"
+    """Tests creating a service with a negative duration"""
+    service_data = {
+        "name": "Test Service",
+        "description": "Test Description",
+        "duration": -30,
+        "price": 100,
+        "state": "ACTIVO"
     }
-    response = client.post("/api/v1/servicios", json=servicio_data)
+    response = client.post("/api/v1/services", json=service_data)
     assert response.status_code == 422
     data = response.json()
     assert "validation error" in data["detail"][0]["msg"].lower() 

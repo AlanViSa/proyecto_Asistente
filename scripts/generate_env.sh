@@ -1,35 +1,35 @@
 #!/bin/bash
 
-# Colores para mensajes
+# Colors for messages
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
-# Función para imprimir mensajes
+# Function to print messages
 print_message() {
     echo -e "${2}${1}${NC}"
 }
 
-# Función para generar una cadena aleatoria segura
+# Function to generate a secure random string
 generate_secure_string() {
     openssl rand -base64 32
 }
 
-# Verificar que estamos en el directorio correcto
+# Check that we are in the correct directory
 if [ ! -f ".env.production" ]; then
-    print_message "Error: No se encontró .env.production. Por favor, crea el archivo primero." "$RED"
+    print_message "Error: .env.production not found. Please create the file first." "$RED"
     exit 1
 fi
 
-# Generar variables de entorno seguras
-print_message "Generando variables de entorno seguras..." "$YELLOW"
+# Generate secure environment variables
+print_message "Generating secure environment variables..." "$YELLOW"
 
-# Generar SECRET_KEY
+# Generate SECRET_KEY
 SECRET_KEY=$(generate_secure_string)
 sed -i "s/\${SECRET_KEY}/$SECRET_KEY/" .env.production
 
-# Generar DB_PASSWORD
+# Generate DB_PASSWORD
 DB_PASSWORD=$(generate_secure_string)
 sed -i "s/\${DB_PASSWORD}/$DB_PASSWORD/" .env.production
 
@@ -37,8 +37,8 @@ sed -i "s/\${DB_PASSWORD}/$DB_PASSWORD/" .env.production
 GRAFANA_ADMIN_PASSWORD=$(generate_secure_string)
 sed -i "s/\${GRAFANA_ADMIN_PASSWORD}/$GRAFANA_ADMIN_PASSWORD/" .env.production
 
-# Solicitar credenciales de servicios externos
-print_message "\nPor favor, ingresa las siguientes credenciales:" "$YELLOW"
+# Request credentials for external services
+print_message "\nPlease enter the following credentials:" "$YELLOW"
 
 # Twilio
 read -p "Twilio Account SID: " TWILIO_ACCOUNT_SID
@@ -54,10 +54,10 @@ sed -i "s/\${TWILIO_AUTH_TOKEN}/$TWILIO_AUTH_TOKEN/" .env.production
 sed -i "s/\${TWILIO_PHONE_NUMBER}/$TWILIO_PHONE_NUMBER/" .env.production
 sed -i "s/\${OPENAI_API_KEY}/$OPENAI_API_KEY/" .env.production
 
-# Guardar credenciales en un archivo seguro
-print_message "\nGuardando credenciales en un archivo seguro..." "$YELLOW"
+# Save credentials in a secure file
+print_message "\nSaving credentials in a secure file..." "$YELLOW"
 cat > .env.credentials << EOL
-# Credenciales generadas el $(date)
+# Credentials generated on $(date)
 SECRET_KEY=$SECRET_KEY
 DB_PASSWORD=$DB_PASSWORD
 GRAFANA_ADMIN_PASSWORD=$GRAFANA_ADMIN_PASSWORD
@@ -69,9 +69,9 @@ TWILIO_PHONE_NUMBER=$TWILIO_PHONE_NUMBER
 OPENAI_API_KEY=$OPENAI_API_KEY
 EOL
 
-# Establecer permisos seguros
+# Set secure permissions
 chmod 600 .env.credentials
 
-print_message "\n¡Variables de entorno generadas exitosamente!" "$GREEN"
-print_message "Las credenciales se han guardado en .env.credentials" "$YELLOW"
-print_message "IMPORTANTE: Guarda este archivo en un lugar seguro y no lo compartas." "$RED" 
+print_message "\nEnvironment variables generated successfully!" "$GREEN"
+print_message "Credentials have been saved to .env.credentials" "$YELLOW"
+print_message "IMPORTANT: Save this file in a safe place and do not share it." "$RED"

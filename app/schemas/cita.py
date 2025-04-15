@@ -1,52 +1,46 @@
 """
-Esquemas Pydantic para el modelo Cita
+Pydantic schemas for the Appointment model
 """
 from datetime import datetime
-from typing import Optional
-from pydantic import BaseModel, Field, ConfigDict
+from typing import Optional, TYPE_CHECKING
+from pydantic import BaseModel, Field, ConfigDict, field_validator
+from sqlmodel import SQLModel, Field as SQLField, Relationship
 
-from app.models.cita import EstadoCita
-from app.schemas.cliente import ClienteList
+if TYPE_CHECKING:
+    from app.models.cliente import Cliente  # Import only during type checking
 
-class CitaBase(BaseModel):
-    """Schema base para citas"""
-    model_config = ConfigDict(from_attributes=True)
+class AppointmentBase(SQLModel):
+    """Base schema for appointments"""
+    date_time: datetime = SQLField(index=True)
+    service: str = SQLField(max_length=100, index=True)
+    duration_minutes: int = SQLField(default=60, ge=15, le=240)
+    notes: Optional[str] = SQLField(max_length=500, nullable=True, default=None)
 
-class CitaCreate(CitaBase):
-    """Schema para crear citas"""
-    fecha_hora: datetime = Field(..., description="Fecha y hora de la cita")
-    servicio: str = Field(..., min_length=2, max_length=100, description="Servicio solicitado")
-    duracion_minutos: int = Field(60, ge=15, le=240, description="Duración en minutos")
-    notas: Optional[str] = Field(None, max_length=500, description="Notas adicionales")
+class Appointment(AppointmentBase, table=True):
+    """Appointment model for the database"""
+    id: Optional[int] = SQLField(default=None, primary_key=True)
+    status: str = SQLField(default="scheduled")  # Use string for status
+    client_id: int = SQLField(foreign_key="cliente.id")
+    client: "Cliente" = Relationship(back_populates="appointments")  # Use forward reference
+    created_at: datetime = SQLField(default_factory=datetime.utcnow)
+    updated_at: datetime = SQLField(default_factory=datetime.utcnow)
 
-class CitaUpdate(CitaBase):
-    """Schema para actualizar citas"""
-    fecha_hora: Optional[datetime] = None
-    servicio: Optional[str] = Field(None, min_length=2, max_length=100)
-    duracion_minutos: Optional[int] = Field(None, ge=15, le=240)
-    notas: Optional[str] = Field(None, max_length=500)
+    @field_validator("status")
+    def validate_status(cls, value):
+        valid_statuses = ["scheduled", "confirmed", "cancelled", "completed", "no-show"]
+        if value not in valid_statuses:
+            raise ValueError(f"Invalid appointment status: {value}. Valid statuses are: {valid_statuses}")
+        return value
 
-class CitaList(CitaBase):
-    """Schema para listar citas (versión reducida)"""
-    id: int = Field(..., description="ID único de la cita")
-    fecha_hora: datetime = Field(..., description="Fecha y hora de la cita")
-    servicio: str = Field(..., description="Servicio solicitado")
-    estado: EstadoCita = Field(..., description="Estado actual de la cita")
-    cliente: ClienteList = Field(..., description="Cliente que reservó la cita")
-
-class Cita(CitaBase):
-    """Schema para respuesta de cita"""
-    id: int = Field(..., description="ID único de la cita")
-    fecha_hora: datetime
-    servicio: str
-    duracion_minutos: int
-    estado: EstadoCita
-    notas: Optional[str] = None
-    cliente_id: int = Field(..., description="ID del cliente")
-    cliente: ClienteList
-    created_at: datetime
-    updated_at: datetime
-
-class CitaInDB(Cita):
-    """Schema para cita en base de datos"""
-    pass  # Mismo que Cita, pero lo mantenemos por consistencia 
+class AppointmentCreate(AppointmentBase):
+    """Schema for creating appointments"""
+    client_id: int
+    status: str = "scheduled"  # Default status
+    
+class AppointmentUpdate(AppointmentBase):
+    """Schema for updating appointments"""
+    date_time: Optional[datetime] = None
+    service: Optional[str] = None
+    duration_minutes: Optional[int] = None
+    status: Optional[str] = None
+    notes: Optional[str] = None

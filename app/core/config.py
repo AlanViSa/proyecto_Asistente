@@ -71,6 +71,7 @@ class Settings(BaseSettings):
     SSL_KEY: Optional[str] = None
     
     # Application
+    APP_NAME: str = Field(default="Asistente Virtual Salón")
     BUSINESS_NAME: str = Field(default="Salon Assistant")
     TIMEZONE: str = Field(default="America/New_York")
     DEBUG: bool = Field(default=True)
@@ -89,6 +90,9 @@ class Settings(BaseSettings):
     # Monitoring
     PROMETHEUS_METRICS_PATH: str = "/metrics"
     GRAFANA_PORT: int = 3000
+    
+    # Localization
+    LOCALE: str = Field(default="es_CO")
 
     @validator("ENVIRONMENT")
     def validate_environment(cls, v):

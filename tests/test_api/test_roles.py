@@ -1,14 +1,14 @@
 """
-Pruebas de integración para los endpoints de roles y permisos
+Integration tests for the roles and permissions endpoints
 """
 import pytest
 from fastapi.testclient import TestClient
-from app.models.rol_usuario import RolUsuario
-from app.models.permiso import Permiso
+from app.models.role_user import RoleUser
+from app.models.permission import Permission
 
-def test_create_rol(client: TestClient, test_rol_data):
-    """Prueba la creación de un rol a través de la API"""
-    response = client.post("/api/v1/roles", json=test_rol_data)
+def test_create_role(client: TestClient, test_role_data):
+    """Tests the creation of a role via the API"""
+    response = client.post("/api/v1/roles", json=test_role_data)
     assert response.status_code == 200
     data = response.json()
     
@@ -17,19 +17,19 @@ def test_create_rol(client: TestClient, test_rol_data):
     assert data["permisos"] == test_rol_data["permisos"]
     assert "id" in data
 
-def test_create_rol_duplicate_name(client: TestClient, test_rol_data):
-    """Prueba la creación de un rol con nombre duplicado"""
-    # Crear primer rol
-    client.post("/api/v1/roles", json=test_rol_data)
+def test_create_role_duplicate_name(client: TestClient, test_role_data):
+    """Tests the creation of a role with a duplicate name"""
+    # Create first role
+    client.post("/api/v1/roles", json=test_role_data)
     
-    # Intentar crear segundo rol con el mismo nombre
-    response = client.post("/api/v1/roles", json=test_rol_data)
+    # Attempt to create a second role with the same name
+    response = client.post("/api/v1/roles", json=test_role_data)
     assert response.status_code == 400
     assert "nombre" in response.json()["detail"].lower()
 
 def test_get_rol(client: TestClient, test_rol_data):
     """Prueba la obtención de un rol a través de la API"""
-    # Crear rol
+    # Create role
     create_response = client.post("/api/v1/roles", json=test_rol_data)
     rol_id = create_response.json()["id"]
     
@@ -43,18 +43,18 @@ def test_get_rol(client: TestClient, test_rol_data):
     assert data["descripcion"] == test_rol_data["descripcion"]
     assert data["permisos"] == test_rol_data["permisos"]
 
-def test_get_rol_not_found(client: TestClient):
-    """Prueba la obtención de un rol que no existe"""
+def test_get_role_not_found(client: TestClient):
+    """Tests getting a role that does not exist"""
     response = client.get("/api/v1/roles/999")
     assert response.status_code == 404
 
 def test_update_rol(client: TestClient, test_rol_data):
-    """Prueba la actualización de un rol a través de la API"""
-    # Crear rol
+    """Tests updating a role via the API"""
+    # Create role
     create_response = client.post("/api/v1/roles", json=test_rol_data)
     rol_id = create_response.json()["id"]
     
-    # Actualizar rol
+    # Update role
     update_data = {
         "nombre": "Rol Actualizado",
         "descripcion": "Descripción actualizada",
@@ -68,11 +68,11 @@ def test_update_rol(client: TestClient, test_rol_data):
     assert data["descripcion"] == update_data["descripcion"]
     assert data["permisos"] == update_data["permisos"]
 
-def test_update_rol_not_found(client: TestClient):
-    """Prueba la actualización de un rol que no existe"""
+def test_update_role_not_found(client: TestClient):
+    """Tests updating a role that does not exist"""
     update_data = {
         "nombre": "Rol Actualizado",
-        "descripcion": "Descripción actualizada",
+        "descripcion": "Updated description",
         "permisos": [Permiso.ADMIN]
     }
     response = client.put("/api/v1/roles/999", json=update_data)
@@ -80,16 +80,16 @@ def test_update_rol_not_found(client: TestClient):
 
 def test_update_rol_duplicate_name(client: TestClient, test_rol_data):
     """Prueba la actualización de un rol con nombre duplicado"""
-    # Crear dos roles
+    # Create two roles
     rol1_response = client.post("/api/v1/roles", json=test_rol_data)
     rol1_id = rol1_response.json()["id"]
     
     rol2_data = test_rol_data.copy()
-    rol2_data["nombre"] = "Otro Rol"
+    rol2_data["nombre"] = "Another Role"
     rol2_response = client.post("/api/v1/roles", json=rol2_data)
     rol2_id = rol2_response.json()["id"]
     
-    # Intentar actualizar el segundo rol con el nombre del primero
+    # Attempt to update the second role with the name of the first
     update_data = {"nombre": test_rol_data["nombre"]}
     response = client.put(f"/api/v1/roles/{rol2_id}", json=update_data)
     assert response.status_code == 400
@@ -97,15 +97,15 @@ def test_update_rol_duplicate_name(client: TestClient, test_rol_data):
 
 def test_delete_rol(client: TestClient, test_rol_data):
     """Prueba la eliminación de un rol a través de la API"""
-    # Crear rol
+    # Create role
     create_response = client.post("/api/v1/roles", json=test_rol_data)
     rol_id = create_response.json()["id"]
     
-    # Eliminar rol
+    # Delete role
     response = client.delete(f"/api/v1/roles/{rol_id}")
     assert response.status_code == 204
     
-    # Verificar que el rol fue eliminado
+    # Verify that the role was deleted
     get_response = client.get(f"/api/v1/roles/{rol_id}")
     assert get_response.status_code == 404
 
@@ -115,7 +115,7 @@ def test_delete_rol_not_found(client: TestClient):
     assert response.status_code == 404
 
 def test_get_roles(client: TestClient, test_rol_data):
-    """Prueba la obtención de la lista de roles a través de la API"""
+    """Tests getting the list of roles via the API"""
     # Crear varios roles
     for i in range(3):
         rol_data = test_rol_data.copy()
@@ -133,17 +133,17 @@ def test_get_roles(client: TestClient, test_rol_data):
     assert all("descripcion" in rol for rol in data)
     assert all("permisos" in rol for rol in data)
 
-def test_asignar_rol_usuario(client: TestClient, test_user_data, test_rol_data):
-    """Prueba la asignación de un rol a un usuario a través de la API"""
-    # Crear usuario
+def test_assign_role_to_user(client: TestClient, test_user_data, test_role_data):
+    """Tests assigning a role to a user via the API"""
+    # Create user
     user_response = client.post("/api/v1/auth/register", json=test_user_data)
     user_id = user_response.json()["id"]
     
-    # Crear rol
+    # Create role
     rol_response = client.post("/api/v1/roles", json=test_rol_data)
     rol_id = rol_response.json()["id"]
     
-    # Asignar rol al usuario
+    # Assign role to the user
     response = client.put(f"/api/v1/usuarios/{user_id}/rol/{rol_id}")
     assert response.status_code == 200
     data = response.json()
@@ -151,13 +151,13 @@ def test_asignar_rol_usuario(client: TestClient, test_user_data, test_rol_data):
     assert data["rol_id"] == rol_id
     assert data["usuario_id"] == user_id
 
-def test_asignar_rol_usuario_not_found(client: TestClient, test_rol_data):
-    """Prueba la asignación de un rol a un usuario que no existe"""
-    # Crear rol
+def test_assign_role_to_user_not_found(client: TestClient, test_role_data):
+    """Tests assigning a role to a user that does not exist"""
+    # Create role
     rol_response = client.post("/api/v1/roles", json=test_rol_data)
     rol_id = rol_response.json()["id"]
     
-    # Intentar asignar rol a usuario inexistente
+    # Attempt to assign role to a non-existent user
     response = client.put(f"/api/v1/usuarios/999/rol/{rol_id}")
     assert response.status_code == 404
     assert "usuario" in response.json()["detail"].lower()
@@ -165,8 +165,8 @@ def test_asignar_rol_usuario_not_found(client: TestClient, test_rol_data):
 def test_asignar_rol_not_found(client: TestClient, test_user_data):
     """Prueba la asignación de un rol que no existe a un usuario"""
     # Crear usuario
-    user_response = client.post("/api/v1/auth/register", json=test_user_data)
-    user_id = user_response.json()["id"]
+    user_response1 = client.post("/api/v1/auth/register", json=test_user_data)
+    user_id = user_response1.json()["id"]
     
     # Intentar asignar rol inexistente
     response = client.put(f"/api/v1/usuarios/{user_id}/rol/999")
@@ -174,27 +174,27 @@ def test_asignar_rol_not_found(client: TestClient, test_user_data):
     assert "rol" in response.json()["detail"].lower()
 
 def test_verificar_permiso_usuario(client: TestClient, test_user_data, test_rol_data):
-    """Prueba la verificación de permisos de un usuario a través de la API"""
-    # Crear usuario
-    user_response = client.post("/api/v1/auth/register", json=test_user_data)
-    user_id = user_response.json()["id"]
+    """Tests verifying user permissions via the API"""
+    # Create user
+    user_response2 = client.post("/api/v1/auth/register", json=test_user_data)
+    user_id = user_response2.json()["id"]
     
-    # Crear rol con permisos específicos
+    # Create role with specific permissions
     rol_data = test_rol_data.copy()
-    rol_data["permisos"] = [Permiso.ADMIN]
+    rol_data["permisos"] = [Permission.ADMIN]
     rol_response = client.post("/api/v1/roles", json=rol_data)
     rol_id = rol_response.json()["id"]
     
-    # Asignar rol al usuario
+    # Assign role to the user
     client.put(f"/api/v1/usuarios/{user_id}/rol/{rol_id}")
     
-    # Verificar permiso
-    response = client.get(f"/api/v1/usuarios/{user_id}/permisos/{Permiso.ADMIN}")
+    # Verify permission
+    response = client.get(f"/api/v1/usuarios/{user_id}/permisos/{Permission.ADMIN}")
     assert response.status_code == 200
     data = response.json()
     
     assert data["tiene_permiso"] is True
-    assert data["permiso"] == Permiso.ADMIN
+    assert data["permiso"] == Permission.ADMIN
     assert data["usuario_id"] == user_id
 
 def test_verificar_permiso_usuario_sin_permiso(client: TestClient, test_user_data, test_rol_data):

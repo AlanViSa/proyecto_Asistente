@@ -1,352 +1,276 @@
 """
-Endpoints para gestionar las preferencias de notificación de los clientes
+Endpoints to manage client notification preferences
 
-Este módulo proporciona endpoints para:
-- Obtener preferencias de notificación de un cliente
-- Crear nuevas preferencias de notificación
-- Actualizar preferencias existentes
-- Eliminar preferencias
-- Crear preferencias por defecto
-- Listar clientes sin preferencias configuradas
+This module provides endpoints for:
+- Getting a client's notification preferences
+- Creating new notification preferences
+- Updating existing preferences
+- Deleting preferences
+- Creating default preferences
+- Listing clients without configured preferences
 """
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api import deps
-from app.services.preferencias_notificacion import PreferenciasNotificacionService
-from app.schemas.preferencias_notificacion import (
-    PreferenciasNotificacion,
-    PreferenciasNotificacionCreate,
-    PreferenciasNotificacionUpdate
+from app.services.preferencias_notificacion import NotificationPreferenceService
+from app.schemas.preferencias_notificacion import (NotificationPreference, NotificationPreferenceCreate, NotificationPreferenceUpdate
 )
 
 router = APIRouter()
 
 @router.get(
-    "/{cliente_id}",
-    response_model=PreferenciasNotificacion,
-    summary="Obtener Preferencias de Notificación",
+    "/{client_id}",
+    response_model=NotificationPreference,
+    summary="Get Notification Preferences",
     description="""
-    Obtiene las preferencias de notificación de un cliente específico.
-    
-    ## Parámetros
-    * `cliente_id`: ID del cliente a consultar
-    
-    ## Respuesta
-    * Preferencias de notificación del cliente
-    
-    ## Errores
-    * 404: No se encontraron preferencias para este cliente
-    * 401: No autenticado
+    Gets the notification preferences for a specific client.
+
+    ## Parameters
+    * `client_id`: ID of the client to query
+
+    ## Response
+    * Client's notification preferences
+
+    ## Errors
+    * 404: No preferences found for this client
+    * 401: Not authenticated
     """,
     responses={
         200: {
-            "description": "Preferencias obtenidas exitosamente",
+            "description": "Preferences retrieved successfully",
             "content": {
                 "application/json": {
                     "example": {
-                        "cliente_id": 1,
-                        "notificaciones_email": true,
-                        "notificaciones_sms": true,
-                        "notificaciones_push": false,
-                        "recordatorios_citas": true,
-                        "promociones": false,
-                        "horario_notificaciones": {
-                            "inicio": "09:00",
-                            "fin": "21:00"
-                        }
+                        "client_id": 1,
+                        "email_notifications": True,
+                        "sms_notifications": True,
+                        "push_notifications": False,
+                        "appointment_reminders": True,
+                        "promotions": False,
+                        "notification_timeframe": {"start": "09:00", "end": "21:00"},
                     }
                 }
             }
         },
         404: {
-            "description": "Preferencias no encontradas",
+            "description": "Preferences not found",
             "content": {
                 "application/json": {
-                    "example": {
-                        "detail": "No se encontraron preferencias para este cliente"
-                    }
+                    "example": {"detail": "No preferences found for this client"}
                 }
             }
-        }
+        },
     }
 )
-async def get_preferencias(
-    cliente_id: int,
-    db: AsyncSession = Depends(deps.get_db)
-):
+async def get_preferences(client_id: int, db: AsyncSession = Depends(deps.get_db)):
     """
-    Obtiene las preferencias de notificación de un cliente
+    Gets the notification preferences for a client
     """
-    preferencias = await PreferenciasNotificacionService.get_by_cliente(db, cliente_id)
-    if not preferencias:
+    preferences = await NotificationPreferenceService.get_by_client(db, client_id)
+    if not preferences:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="No se encontraron preferencias para este cliente"
+            detail="No preferences found for this client",
         )
-    return preferencias
+    return preferences
 
 @router.post(
     "",
-    response_model=PreferenciasNotificacion,
-    summary="Crear Preferencias de Notificación",
+    response_model=NotificationPreference,
+    summary="Create Notification Preferences",
+    description="Creates new notification preferences for a client.",
+)
+async def create_preferences(
+    preferences_in: NotificationPreferenceCreate,
+    db: AsyncSession = Depends(deps.get_db)
+):
+    """
+    Creates new notification preferences for a client
+    """
+    # Check if preferences already exist for this client
+    existing_preferences = await NotificationPreferenceService.get_by_client(
+        db, preferences_in.client_id
+    )
+    if existing_preferences:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Preferences already exist for this client",
+        )
+
+    return await NotificationPreferenceService.create(db, preferences_in)
+
+@router.put(
+    "/{client_id}",
+    response_model=NotificationPreference,
+    summary="Update Notification Preferences",
     description="""
-    Crea nuevas preferencias de notificación para un cliente.
-    
-    ## Parámetros
-    * `cliente_id`: ID del cliente
-    * `notificaciones_email`: Habilitar notificaciones por email
-    * `notificaciones_sms`: Habilitar notificaciones por SMS
-    * `notificaciones_push`: Habilitar notificaciones push
-    * `recordatorios_citas`: Habilitar recordatorios de citas
-    * `promociones`: Habilitar notificaciones de promociones
-    * `horario_notificaciones`: Horario permitido para notificaciones
-    
-    ## Respuesta
-    * Preferencias creadas
-    
-    ## Errores
-    * 400: Ya existen preferencias para este cliente
-    * 401: No autenticado
+    Updates a client's notification preferences.
+
+    ## Parameters
+    * `client_id`: ID of the client
+    * `email_notifications`: Enable/disable email notifications
+    * `sms_notifications`: Enable/disable SMS notifications
+    * `push_notifications`: Enable/disable push notifications
+    * `appointment_reminders`: Enable/disable appointment reminders
+    * `promotions`: Enable/disable promotion notifications
+    * `notification_timeframe`: Update allowed timeframe
+
+    ## Response
+    * Updated preferences
+
+    ## Errors
+    * 404: No preferences found for this client
+    * 401: Not authenticated
     """,
     responses={
         200: {
-            "description": "Preferencias creadas exitosamente",
+            "description": "Preferences updated successfully",
             "content": {
                 "application/json": {
                     "example": {
-                        "cliente_id": 1,
-                        "notificaciones_email": true,
-                        "notificaciones_sms": true,
-                        "notificaciones_push": false,
-                        "recordatorios_citas": true,
-                        "promociones": false,
-                        "horario_notificaciones": {
-                            "inicio": "09:00",
-                            "fin": "21:00"
-                        }
+                        "client_id": 1,
+                        "email_notifications": True,
+                        "sms_notifications": False,
+                        "push_notifications": True,
+                        "appointment_reminders": True,
+                        "promotions": False,
+                        "notification_timeframe": {"start": "10:00", "end": "20:00"},
                     }
                 }
             }
         },
-        400: {
-            "description": "Preferencias ya existentes",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "detail": "Ya existen preferencias para este cliente"
-                    }
-                }
-            }
-        }
     }
 )
-async def create_preferencias(
-    preferencias_in: PreferenciasNotificacionCreate,
+async def update_preferences(
+    client_id: int,
+    preferences_in: NotificationPreferenceUpdate,
     db: AsyncSession = Depends(deps.get_db)
 ):
     """
-    Crea nuevas preferencias de notificación para un cliente
+    Updates a client's notification preferences
     """
-    # Verificar si ya existen preferencias para este cliente
-    preferencias_existentes = await PreferenciasNotificacionService.get_by_cliente(
-        db, preferencias_in.cliente_id
-    )
-    if preferencias_existentes:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ya existen preferencias para este cliente"
-        )
-    
-    return await PreferenciasNotificacionService.create(db, preferencias_in)
-
-@router.put(
-    "/{cliente_id}",
-    response_model=PreferenciasNotificacion,
-    summary="Actualizar Preferencias de Notificación",
-    description="""
-    Actualiza las preferencias de notificación de un cliente.
-    
-    ## Parámetros
-    * `cliente_id`: ID del cliente
-    * `notificaciones_email`: Habilitar/deshabilitar notificaciones por email
-    * `notificaciones_sms`: Habilitar/deshabilitar notificaciones por SMS
-    * `notificaciones_push`: Habilitar/deshabilitar notificaciones push
-    * `recordatorios_citas`: Habilitar/deshabilitar recordatorios de citas
-    * `promociones`: Habilitar/deshabilitar notificaciones de promociones
-    * `horario_notificaciones`: Actualizar horario permitido
-    
-    ## Respuesta
-    * Preferencias actualizadas
-    
-    ## Errores
-    * 404: No se encontraron preferencias para este cliente
-    * 401: No autenticado
-    """,
-    responses={
-        200: {
-            "description": "Preferencias actualizadas exitosamente",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "cliente_id": 1,
-                        "notificaciones_email": true,
-                        "notificaciones_sms": false,
-                        "notificaciones_push": true,
-                        "recordatorios_citas": true,
-                        "promociones": false,
-                        "horario_notificaciones": {
-                            "inicio": "10:00",
-                            "fin": "20:00"
-                        }
-                    }
-                }
-            }
-        }
-    }
-)
-async def update_preferencias(
-    cliente_id: int,
-    preferencias_in: PreferenciasNotificacionUpdate,
-    db: AsyncSession = Depends(deps.get_db)
-):
-    """
-    Actualiza las preferencias de notificación de un cliente
-    """
-    preferencias = await PreferenciasNotificacionService.get_by_cliente(db, cliente_id)
-    if not preferencias:
+    preferences = await NotificationPreferenceService.get_by_client(db, client_id)
+    if not preferences:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="No se encontraron preferencias para este cliente"
+            detail="No preferences found for this client",
         )
-    
-    return await PreferenciasNotificacionService.update(db, preferencias, preferencias_in)
+
+    return await NotificationPreferenceService.update(
+        db, preferences, preferences_in
+    )
 
 @router.delete(
-    "/{cliente_id}",
+    "/{client_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    summary="Eliminar Preferencias de Notificación",
+    summary="Delete Notification Preferences",
     description="""
-    Elimina las preferencias de notificación de un cliente.
-    
-    ## Parámetros
-    * `cliente_id`: ID del cliente
-    
-    ## Respuesta
-    * 204: Preferencias eliminadas exitosamente
-    
-    ## Errores
-    * 404: No se encontraron preferencias para este cliente
-    * 401: No autenticado
+    Deletes a client's notification preferences.
+
+    ## Parameters
+    * `client_id`: ID of the client
+
+    ## Response
+    * 204: Preferences deleted successfully
+
+    ## Errors
+    * 404: No preferences found for this client
+    * 401: Not authenticated
     """,
     responses={
         204: {
-            "description": "Preferencias eliminadas exitosamente"
+            "description": "Preferences deleted successfully"
         },
         404: {
-            "description": "Preferencias no encontradas",
+            "description": "Preferences not found",
             "content": {
                 "application/json": {
-                    "example": {
-                        "detail": "No se encontraron preferencias para este cliente"
-                    }
+                    "example": {"detail": "No preferences found for this client"}
                 }
             }
-        }
+        },
     }
 )
-async def delete_preferencias(
-    cliente_id: int,
-    db: AsyncSession = Depends(deps.get_db)
-):
+async def delete_preferences(client_id: int, db: AsyncSession = Depends(deps.get_db)):
     """
-    Elimina las preferencias de notificación de un cliente
+    Deletes a client's notification preferences
     """
-    preferencias = await PreferenciasNotificacionService.get_by_cliente(db, cliente_id)
-    if not preferencias:
+    preferences = await NotificationPreferenceService.get_by_client(db, client_id)
+    if not preferences:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="No se encontraron preferencias para este cliente"
+            detail="No preferences found for this client",
         )
-    
-    await PreferenciasNotificacionService.delete(db, preferencias)
+
+    await NotificationPreferenceService.delete(db, preferences)
 
 @router.post(
-    "/{cliente_id}/default",
-    response_model=PreferenciasNotificacion,
-    summary="Crear Preferencias por Defecto",
+    "/{client_id}/default",
+    response_model=NotificationPreference,
+    summary="Create Default Preferences",
     description="""
-    Crea o recupera las preferencias por defecto para un cliente.
-    
-    ## Parámetros
-    * `cliente_id`: ID del cliente
-    
-    ## Respuesta
-    * Preferencias por defecto
-    
-    ## Errores
-    * 401: No autenticado
+    Creates or retrieves default preferences for a client.
+
+    ## Parameters
+    * `client_id`: ID of the client
+
+    ## Response
+    * Default preferences
+
+    ## Errors
+    * 401: Not authenticated
     """,
     responses={
         200: {
-            "description": "Preferencias por defecto creadas/recuperadas exitosamente",
+            "description": "Default preferences created/retrieved successfully",
             "content": {
                 "application/json": {
                     "example": {
-                        "cliente_id": 1,
-                        "notificaciones_email": true,
-                        "notificaciones_sms": true,
-                        "notificaciones_push": true,
-                        "recordatorios_citas": true,
-                        "promociones": true,
-                        "horario_notificaciones": {
-                            "inicio": "09:00",
-                            "fin": "21:00"
-                        }
+                        "client_id": 1,
+                        "email_notifications": True,
+                        "sms_notifications": True,
+                        "push_notifications": True,
+                        "appointment_reminders": True,
+                        "promotions": True,
+                        "notification_timeframe": {"start": "09:00", "end": "21:00"},
                     }
                 }
             }
-        }
+        },
     }
 )
-async def create_default_preferencias(
-    cliente_id: int,
-    db: AsyncSession = Depends(deps.get_db)
-):
+async def create_default_preferences(client_id: int, db: AsyncSession = Depends(deps.get_db)):
     """
-    Crea o recupera las preferencias por defecto para un cliente
+    Creates or retrieves default preferences for a client
     """
-    return await PreferenciasNotificacionService.crear_preferencias_por_defecto(db, cliente_id)
+    return await NotificationPreferenceService.create_default_preferences(
+        db, client_id
+    )
 
 @router.get(
-    "/sin-preferencias",
+    "/without-preferences",
     response_model=List[int],
-    summary="Listar Clientes sin Preferencias",
+    summary="List Clients Without Preferences",
     description="""
-    Obtiene la lista de IDs de clientes que no tienen preferencias configuradas.
-    
-    ## Respuesta
-    * Lista de IDs de clientes sin preferencias
-    
-    ## Errores
-    * 401: No autenticado
+    Gets the list of client IDs that do not have preferences configured.
+
+    ## Response
+    * List of client IDs without preferences
+
+    ## Errors
+    * 401: Not authenticated
     """,
     responses={
         200: {
-            "description": "Lista de clientes sin preferencias obtenida exitosamente",
-            "content": {
-                "application/json": {
-                    "example": [1, 2, 3]
-                }
-            }
-        }
+            "description": "List of clients without preferences retrieved successfully",
+            "content": {"application/json": {"example": [1, 2, 3]}},
+        },
     }
 )
-async def get_clientes_sin_preferencias(
-    db: AsyncSession = Depends(deps.get_db)
-):
+async def get_clients_without_preferences(db: AsyncSession = Depends(deps.get_db)):
     """
-    Obtiene la lista de IDs de clientes que no tienen preferencias configuradas
+    Gets the list of client IDs that do not have preferences configured
     """
-    return await PreferenciasNotificacionService.get_clientes_sin_preferencias(db) 
+    return await NotificationPreferenceService.get_clients_without_preferences(db)

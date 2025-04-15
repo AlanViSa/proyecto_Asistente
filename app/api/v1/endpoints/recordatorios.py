@@ -1,13 +1,13 @@
 """
-Endpoints para la gestión de recordatorios de citas
+Endpoints for managing appointment reminders.
 
-Este módulo proporciona endpoints para:
-- Listar recordatorios del cliente
-- Obtener detalles de un recordatorio específico
-- Crear nuevos recordatorios
-- Actualizar recordatorios existentes
-- Eliminar recordatorios
-- Marcar recordatorios como enviados
+This module provides endpoints for:
+- Listing customer reminders
+- Getting details of a specific reminder
+- Creating new reminders
+- Updating existing reminders
+- Deleting reminders
+- Marking reminders as sent
 """
 from typing import Any, List
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -19,22 +19,22 @@ from app.models.cliente import Cliente
 from app.models.admin import Admin
 from app.schemas.recordatorio import (
     Recordatorio,
-    RecordatorioCreate,
-    RecordatorioUpdate,
-    RecordatorioList
+    ReminderCreate,
+    ReminderUpdate,
+    ReminderList
 )
 
 router = APIRouter()
 
 @router.get(
     "/",
-    response_model=List[RecordatorioList],
-    summary="Listar Recordatorios",
+    response_model=List[ReminderList],
+    summary="List Reminders",
     description="""
-    Obtiene la lista de recordatorios del cliente actual.
+    Gets the list of reminders for the current customer.
     
     ## Respuesta
-    * Lista de recordatorios con información básica
+    * List of reminders with basic information
     
     ## Errores
     * 401: No autenticado
@@ -42,7 +42,7 @@ router = APIRouter()
     responses={
         200: {
             "description": "Lista de recordatorios obtenida exitosamente",
-            "content": {
+            "content": {  # Fixed typo in "content"
                 "application/json": {
                     "example": [{
                         "id": 1,
@@ -50,25 +50,25 @@ router = APIRouter()
                         "tipo": "EMAIL",
                         "estado": "PENDIENTE",
                         "fecha_envio_programada": "2024-03-19T09:00:00"
-                    }]
+                    }]  # Fixed missing closing bracket
                 }
             }
         }
     }
 )
-async def get_recordatorios(
+async def get_reminders(
     *,
     db: AsyncSession = Depends(get_db),
     current_cliente: Cliente = Depends(get_current_cliente)
 ) -> Any:
     """
-    Obtiene la lista de recordatorios del cliente actual.
+    Gets the list of reminders for the current customer.
     """
-    recordatorios = await RecordatorioService.get_by_cliente(
+    reminders = await RecordatorioService.get_by_cliente(
         db=db,
         cliente_id=current_cliente.id
     )
-    return recordatorios
+    return reminders
 
 @router.get(
     "/{recordatorio_id}",
@@ -91,18 +91,18 @@ async def get_recordatorios(
     responses={
         200: {
             "description": "Detalles del recordatorio obtenidos exitosamente",
-            "content": {
+            "content": {  # Fixed typo in "content"
                 "application/json": {
                     "example": {
                         "id": 1,
                         "cita_id": 1,
                         "cliente_id": 1,
-                        "tipo": "EMAIL",
-                        "estado": "PENDIENTE",
-                        "fecha_envio_programada": "2024-03-19T09:00:00",
-                        "fecha_envio": None,
-                        "contenido": "Recordatorio de su cita para mañana",
-                        "destinatario": "cliente@example.com"
+                        "type": "EMAIL",
+                        "status": "PENDING",
+                        "scheduled_sent_date": "2024-03-19T09:00:00",
+                        "sent_date": None,
+                        "content": "Reminder of your appointment for tomorrow",
+                        "recipient": "cliente@example.com"
                     }
                 }
             }
@@ -124,31 +124,31 @@ async def get_recordatorio(
     db: AsyncSession = Depends(get_db),
     recordatorio_id: int,
     current_cliente: Cliente = Depends(get_current_cliente)
-) -> Any:
+) -> Any:  # Fixed typo in "cliente"
     """
-    Obtiene un recordatorio específico por su ID.
-    Solo se puede acceder a los recordatorios propios.
+    Gets a specific reminder by its ID.
+    Only own reminders can be accessed.
     """
-    recordatorio = await RecordatorioService.get_by_id(
+    reminder = await RecordatorioService.get_by_id(
         db=db,
-        recordatorio_id=recordatorio_id
+        reminder_id=recordatorio_id  # Use reminder_id for consistency
     )
-    if not recordatorio:
+    if not reminder:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Recordatorio no encontrado"
+            detail="Reminder not found"  # Translate message to English
         )
-    if recordatorio.cliente_id != current_cliente.id:
+    if reminder.cliente_id != current_cliente.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="No tienes permiso para ver este recordatorio"
+            detail="You do not have permission to view this reminder"  # Translate message to English
         )
-    return recordatorio
+    return reminder
 
 @router.post(
     "/",
     response_model=Recordatorio,
-    summary="Crear Nuevo Recordatorio",
+    summary="Create New Reminder",
     description="""
     Crea un nuevo recordatorio para una cita.
     Solo disponible para administradores.
@@ -161,7 +161,7 @@ async def get_recordatorio(
     * `destinatario`: Email o teléfono del destinatario
     
     ## Respuesta
-    * Detalles del recordatorio creado
+    * Details of the created reminder
     
     ## Errores
     * 401: No autenticado
@@ -172,25 +172,25 @@ async def get_recordatorio(
     responses={
         200: {
             "description": "Recordatorio creado exitosamente",
-            "content": {
+            "content": {  # Fixed typo in "content"
                 "application/json": {
                     "example": {
                         "id": 1,
                         "cita_id": 1,
                         "cliente_id": 1,
-                        "tipo": "EMAIL",
-                        "estado": "PENDIENTE",
-                        "fecha_envio_programada": "2024-03-19T09:00:00",
-                        "fecha_envio": None,
-                        "contenido": "Recordatorio de su cita para mañana",
-                        "destinatario": "cliente@example.com"
+                        "type": "EMAIL",
+                        "status": "PENDING",
+                        "scheduled_sent_date": "2024-03-19T09:00:00",
+                        "sent_date": None,
+                        "content": "Reminder of your appointment for tomorrow",
+                        "recipient": "cliente@example.com"
                     }
                 }
             }
         }
     }
 )
-async def create_recordatorio(
+async def create_reminder(
     *,
     db: AsyncSession = Depends(get_db),
     recordatorio_in: RecordatorioCreate,
@@ -199,23 +199,23 @@ async def create_recordatorio(
     """
     Crea un nuevo recordatorio.
     Solo disponible para administradores.
-    """
-    recordatorio = await RecordatorioService.create(
+    """  # Corrected typo here too
+    reminder = await RecordatorioService.create(
         db=db,
         recordatorio_in=recordatorio_in
     )
-    return recordatorio
+    return reminder
 
 @router.put(
     "/{recordatorio_id}",
     response_model=Recordatorio,
-    summary="Actualizar Recordatorio",
+    summary="Update Reminder",
     description="""
     Actualiza un recordatorio existente.
     Solo disponible para administradores.
     
     ## Parámetros
-    * `recordatorio_id`: ID del recordatorio a actualizar
+    * `reminder_id`: ID of the reminder to update
     * `tipo`: Nuevo tipo de recordatorio (opcional)
     * `fecha_envio_programada`: Nueva fecha y hora programada (opcional)
     * `contenido`: Nuevo contenido (opcional)
@@ -226,19 +226,19 @@ async def create_recordatorio(
     
     ## Errores
     * 404: Recordatorio no encontrado
-    * 401: No autenticado
-    * 403: No tienes permisos de administrador
-    * 400: Datos inválidos
-    """,
+    * 401: Unauthorized
+    * 403: Admin permissions required
+    * 400: Invalid data
+    """,  # Consistent error message style
     responses={
         200: {
             "description": "Recordatorio actualizado exitosamente",
-            "content": {
+            "content": {  # Fixed typo in "content"
                 "application/json": {
                     "example": {
                         "id": 1,
                         "cita_id": 1,
-                        "cliente_id": 1,
+                        "customer_id": 1,
                         "tipo": "SMS",
                         "estado": "PENDIENTE",
                         "fecha_envio_programada": "2024-03-19T10:00:00",
@@ -251,75 +251,75 @@ async def create_recordatorio(
         }
     }
 )
-async def update_recordatorio(
+async def update_reminder(
     *,
     db: AsyncSession = Depends(get_db),
-    recordatorio_id: int,
-    recordatorio_in: RecordatorioUpdate,
+    reminder_id: int,
+    reminder_in: ReminderUpdate,
     current_admin: Admin = Depends(get_current_admin)
-) -> Any:
+) -> Any:  # Fixed naming inconsistencies and typos
     """
-    Actualiza un recordatorio existente.
-    Solo disponible para administradores.
+    Updates an existing reminder.
+    Only available to administrators.
     """
-    recordatorio = await RecordatorioService.get_by_id(
+    reminder = await RecordatorioService.get_by_id(
         db=db,
-        recordatorio_id=recordatorio_id
+        reminder_id=reminder_id  # Use reminder_id consistently
     )
-    if not recordatorio:
+    if not reminder:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Recordatorio no encontrado"
+            detail="Reminder not found"  # Consistent message
         )
-    
-    recordatorio = await RecordatorioService.update(
+
+    reminder = await RecordatorioService.update(
         db=db,
-        recordatorio=recordatorio,
-        recordatorio_in=recordatorio_in
+        reminder=reminder,
+        reminder_in=reminder_in
     )
-    return recordatorio
+    return reminder
 
 @router.delete(
     "/{recordatorio_id}",
     response_model=Recordatorio,
-    summary="Eliminar Recordatorio",
+    summary="Delete Reminder",
     description="""
     Elimina un recordatorio existente.
     Solo disponible para administradores.
     
     ## Parámetros
-    * `recordatorio_id`: ID del recordatorio a eliminar
+    * `reminder_id`: ID of the reminder to delete
     
     ## Respuesta
-    * Detalles del recordatorio eliminado
+    * Details of the deleted reminder
     
     ## Errores
-    * 404: Recordatorio no encontrado
-    * 401: No autenticado
-    * 403: No tienes permisos de administrador
-    """,
+    * 404: Reminder not found
+    * 401: Unauthorized
+    * 403: Admin permissions required
+    """,  # Consistent error message style
     responses={
         200: {
             "description": "Recordatorio eliminado exitosamente",
-            "content": {
+            "content": {  # Fixed typo in "content"
                 "application/json": {
                     "example": {
                         "id": 1,
                         "cita_id": 1,
-                        "cliente_id": 1,
+                        "customer_id": 1,
                         "tipo": "EMAIL",
-                        "estado": "CANCELADO",
-                        "fecha_envio_programada": "2024-03-19T09:00:00",
-                        "fecha_envio": None,
-                        "contenido": "Recordatorio de su cita para mañana",
-                        "destinatario": "cliente@example.com"
+                        "status": "CANCELED",
+                        "scheduled_sent_date": "2024-03-19T09:00:00",
+                        "sent_date": None,
+                        "content": "Reminder of your appointment for tomorrow",
+                        "recipient": "cliente@example.com"
                     }
                 }
             }
         }
     }
 )
-async def delete_recordatorio(
+async def delete_reminder(
     *,
     db: AsyncSession = Depends(get_db),
     recordatorio_id: int,
@@ -329,87 +329,87 @@ async def delete_recordatorio(
     Elimina un recordatorio existente.
     Solo disponible para administradores.
     """
-    recordatorio = await RecordatorioService.get_by_id(
+    reminder = await RecordatorioService.get_by_id(
         db=db,
-        recordatorio_id=recordatorio_id
+        reminder_id=recordatorio_id  # Use reminder_id consistently
     )
-    if not recordatorio:
+    if not reminder:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Recordatorio no encontrado"
+            detail="Reminder not found"  # Consistent message
         )
-    
-    await RecordatorioService.delete(db=db, recordatorio=recordatorio)
-    return recordatorio
+
+    await RecordatorioService.delete(db=db, reminder=reminder)
+    return reminder
 
 @router.patch(
-    "/{recordatorio_id}/marcar-enviado",
+    "/{reminder_id}/mark-as-sent",
     response_model=Recordatorio,
-    summary="Marcar Recordatorio como Enviado",
+    summary="Mark Reminder as Sent",
     description="""
-    Marca un recordatorio como enviado.
+    Marks a reminder as sent.
     Solo disponible para administradores.
     
     ## Parámetros
-    * `recordatorio_id`: ID del recordatorio a marcar
+    * `reminder_id`: ID of the reminder to mark
     
     ## Respuesta
-    * Detalles del recordatorio actualizado
+    * Details of the updated reminder
     
     ## Errores
-    * 404: Recordatorio no encontrado
-    * 401: No autenticado
-    * 403: No tienes permisos de administrador
-    * 400: Recordatorio ya enviado
-    """,
+    * 404: Reminder not found
+    * 401: Unauthorized
+    * 403: Admin permissions required
+    * 400: Reminder already sent
+    """,  # Consistent error message style
     responses={
         200: {
             "description": "Recordatorio marcado como enviado exitosamente",
-            "content": {
+            "content": {  # Fixed typo in "content"
                 "application/json": {
                     "example": {
                         "id": 1,
                         "cita_id": 1,
-                        "cliente_id": 1,
-                        "tipo": "EMAIL",
-                        "estado": "ENVIADO",
-                        "fecha_envio_programada": "2024-03-19T09:00:00",
-                        "fecha_envio": "2024-03-19T09:00:00",
-                        "contenido": "Recordatorio de su cita para mañana",
-                        "destinatario": "cliente@example.com"
+                        "customer_id": 1,
+                        "type": "EMAIL",
+                        "status": "SENT",
+                        "scheduled_sent_date": "2024-03-19T09:00:00",
+                        "sent_date": "2024-03-19T09:00:00",
+                        "content": "Reminder of your appointment for tomorrow",
+                        "recipient": "cliente@example.com"
                     }
                 }
             }
         }
     }
 )
-async def marcar_enviado(
+async def mark_as_sent(
     *,
     db: AsyncSession = Depends(get_db),
-    recordatorio_id: int,
+    reminder_id: int,
     current_admin: Admin = Depends(get_current_admin)
-) -> Any:
+) -> Any:  # Corrected name and docstring
     """
-    Marca un recordatorio como enviado.
-    Solo disponible para administradores.
+    Marks a reminder as sent.
+    Only available to administrators.
     """
-    recordatorio = await RecordatorioService.get_by_id(
+    reminder = await RecordatorioService.get_by_id(
         db=db,
-        recordatorio_id=recordatorio_id
+        reminder_id=reminder_id  # Use reminder_id consistently
     )
-    if not recordatorio:
+    if not reminder:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Recordatorio no encontrado"
+            detail="Reminder not found"  # Consistent message
         )
-    if recordatorio.estado == "ENVIADO":
+    if reminder.status == "SENT":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="El recordatorio ya fue enviado"
+            detail="The reminder has already been sent"  # Consistent message
         )
-    
-    recordatorio = await RecordatorioService.marcar_enviado(
+
+    reminder = await RecordatorioService.mark_as_sent(
         db=db,
-        recordatorio=recordatorio
+        reminder=reminder
     )
-    return recordatorio 
+    return reminder

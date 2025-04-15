@@ -9,7 +9,7 @@ from app.models.cita import Cita, EstadoCita
 
 @pytest.fixture
 def services():
-    """Fixture que proporciona todas las instancias de servicios necesarias"""
+    """Fixture that provides all necessary service instances."""
     return {
         "nlp": NLPService(),
         "faq": FAQService(),
@@ -18,20 +18,20 @@ def services():
 
 @pytest.fixture
 def sample_client():
-    """Fixture que proporciona un cliente de ejemplo"""
+    """Fixture that provides a sample client."""
     return Cliente(
         id=1,
-        nombre="Ana García",
-        telefono="+1234567890",
-        email="ana@example.com"
+        name="Ana García",
+        phone="+1234567890",
+        email="ana@example.com",
     )
 
 @pytest.mark.asyncio
 async def test_nlp_faq_integration(services):
-    """Prueba la integración entre el servicio NLP y FAQ"""
+    """Tests the integration between the NLP and FAQ services."""
     mock_response = MagicMock()
     mock_response.choices = [
-        MagicMock(
+      MagicMock(
             message=MagicMock(
                 function_call=MagicMock(
                     arguments='{"intent": "consulta_horarios", "sentimiento": "neutral", "faq_key": "horario"}'
@@ -42,23 +42,23 @@ async def test_nlp_faq_integration(services):
 
     with patch.object(services["nlp"].client, "chat") as mock_chat:
         mock_chat.completions.create = AsyncMock(return_value=mock_response)
-        
-        result = await services["nlp"].analyze_message("¿Cuál es el horario de atención?")
-        
-        assert result["intent"] == "consulta_horarios"
+
+        result = await services["nlp"].analyze_message("What are the business hours?")
+
+        assert result["intent"] == "check_schedule"
         assert result["faq_key"] == "horario"
-        assert "horario" in services["faq"].get_faq("horario")["respuesta"].lower()
+        assert "horario" in services["faq"].get_faq("horario")["answer"].lower()
 
 @pytest.mark.asyncio
 async def test_nlp_appointment_integration(services, sample_client):
-    """Prueba la integración del proceso completo de agendar una cita"""
-    # Mock para el análisis inicial del mensaje
+    """Tests the integration of the complete appointment scheduling process."""
+    # Mock for initial message analysis
     mock_analysis = MagicMock()
     mock_analysis.choices = [
-        MagicMock(
+      MagicMock(
             message=MagicMock(
                 function_call=MagicMock(
-                    arguments='{"intent": "agendar_cita", "servicio": "corte_dama", "sentimiento": "positivo"}'
+                    arguments='{"intent": "schedule_appointment", "service": "haircut_female", "sentiment": "positive"}'
                 )
             )
         )
@@ -66,73 +66,74 @@ async def test_nlp_appointment_integration(services, sample_client):
 
     # Mock para la extracción de detalles
     mock_details = MagicMock()
-    mock_details.choices = [
-        MagicMock(
-            message=MagicMock(
-                function_call=MagicMock(
-                    arguments='''
-                    {
-                        "servicio": "corte_dama",
-                        "fecha": "2024-03-22",
-                        "hora": "14:30",
-                        "duracion_estimada": 60
-                    }
-                    '''
-                )
+    mock_details.choices = [MagicMock(
+        message=MagicMock(
+            function_call=MagicMock(
+                arguments='''
+                {
+                    "service": "haircut_female",
+                    "date": "2024-03-22",
+                    "time": "14:30",
+                    "estimated_duration": 60
+                }
+                '''
             )
         )
-    ]
+    )]
 
     with patch.object(services["nlp"].client, "chat") as mock_chat:
-        mock_chat.completions.create = AsyncMock(side_effect=[mock_analysis, mock_details])
-        
-        # Analizar mensaje inicial
+        mock_chat.completions.create = AsyncMock(
+            side_effect=[mock_analysis, mock_details])
+
+        # Analyze initial message
         result = await services["nlp"].analyze_message(
-            "Quiero agendar un corte de dama para mañana a las 2:30 PM"
+            "I want to schedule a haircut for tomorrow at 2:30 PM"
         )
-        
-        assert result["intent"] == "agendar_cita"
-        assert result["servicio"] == "corte_dama"
-        
-        # Extraer detalles
+
+        assert result["intent"] == "schedule_appointment"
+        assert result["service"] == "haircut_female"
+
+        # Extract details
         details = await services["nlp"].extract_appointment_details(
-            "Quiero el corte de dama mañana a las 2:30 PM"
+            "I want the haircut tomorrow at 2:30 PM"
         )
-        
-        assert details["servicio"] == "corte_dama"
-        assert details["fecha"] == "2024-03-22"
-        assert details["hora"] == "14:30"
+
+        assert details["service"] == "haircut_female"
+        assert details["date"] == "2024-03-22"
+        assert details["time"] == "14:30"
+
 
 @pytest.mark.asyncio
 async def test_appointment_notification_integration(services, sample_client):
-    """Prueba la integración entre la creación de citas y el envío de notificaciones"""
-    # Crear una cita de prueba
-    cita = Cita(
+    """Tests the integration between appointment creation and sending notifications."""
+    # Create a test appointment
+    appointment = Cita(
         id=1,
-        cliente=sample_client,
-        fecha_hora=datetime.now() + timedelta(days=1),
-        servicio="corte_dama",
-        estado=EstadoCita.CONFIRMADA,
-        duracion_minutos=60
-    )
+        client=sample_client,
+        datetime=datetime.now() + timedelta(days=1),
+        service="haircut_female",
+        status=EstadoCita.CONFIRMED,
+        duration_minutes=60
+    ]
 
-    # Mock para el servicio de WhatsApp
+    # Mock for the WhatsApp service
     with patch.object(services["notification"].whatsapp_service, 'client') as mock_client:
         mock_messages = MagicMock()
         mock_message = MagicMock()
         mock_message.sid = "SM123"
         mock_message.body = "Test message"
         mock_messages.create.return_value = mock_message
+
         mock_client.messages = mock_messages
 
-        # Enviar confirmación
-        await services["notification"].send_confirmation_message(cita)
+        # Send confirmation
+        await services["notification"].send_confirmation_message(appointment)
 
-        # Verificar que se llamó al método create con los parámetros correctos
+        # Verify that the create method was called with the correct parameters
         mock_messages.create.assert_called_once()
         args = mock_messages.create.call_args[1]
-        assert args["to"] == f"whatsapp:{cita.cliente.telefono}"
-        assert "confirmada" in args["body"].lower()
+        assert args["to"] == f"whatsapp:{appointment.client.phone}"
+        assert "confirmed" in args["body"].lower()
 
 @pytest.mark.asyncio
 async def test_error_handling_integration(services):
@@ -151,14 +152,13 @@ async def test_error_handling_integration(services):
 
     with patch.object(services["nlp"].client, "chat") as mock_chat:
         mock_chat.completions.create = AsyncMock(return_value=mock_response)
-
         result = await services["nlp"].analyze_message(
-            "Quiero agendar un servicio que no existe"
+            "I want to schedule a service that does not exist"
         )
 
-        assert result["intent"] == "agendar_cita"
-        assert result["servicio"] == "servicio_invalido"
-        assert result["sentimiento"] == "neutral"
+        assert result["intent"] == "schedule_appointment"
+        assert result["service"] == "invalid_service"
+        assert result["sentiment"] == "neutral"
 
 @pytest.mark.asyncio
 async def test_full_appointment_flow(services, sample_client):
@@ -178,63 +178,66 @@ async def test_full_appointment_flow(services, sample_client):
     mock_details = MagicMock()
     mock_details.choices = [
         MagicMock(
-            message=MagicMock(
-                function_call=MagicMock(
-                    arguments='''
-                    {
-                        "servicio": "corte_dama",
-                        "fecha": "2024-03-22",
-                        "hora": "14:30",
-                        "duracion_estimada": 60
-                    }
-                    '''
-                )
-            )
+          message=MagicMock(
+              function_call=MagicMock(
+                  arguments='''
+                  {
+                      "service": "haircut_female",
+                      "date": "2024-03-22",
+                      "time": "14:30",
+                      "estimated_duration": 60
+                  }
+                  '''
+              )
+          )
         )
     ]
 
     with patch.object(services["nlp"].client, "chat") as mock_chat, \
-         patch.object(services["notification"].whatsapp_service, 'client') as mock_twilio:
+            patch.object(services["notification"].whatsapp_service,
+                         'client') as mock_twilio:
 
-        mock_chat.completions.create = AsyncMock(side_effect=[mock_analysis, mock_details])
-        
-        mock_messages = MagicMock()
-        mock_message = MagicMock()
-        mock_message.sid = "SM123"
-        mock_message.body = "Test message"
-        mock_messages.create.return_value = mock_message
-        mock_twilio.messages = mock_messages
+      mock_chat.completions.create = AsyncMock(side_effect=[mock_analysis, mock_details])
 
-        # 1. Analizar mensaje inicial
-        result = await services["nlp"].analyze_message(
-            "Quiero agendar un corte de dama para mañana a las 2:30 PM"
-        )
-        assert result["intent"] == "agendar_cita"
-        assert result["servicio"] == "corte_dama"
+      mock_messages = MagicMock()
+      mock_message = MagicMock()
+      mock_message.sid = "SM123"
+      mock_message.body = "Test message"
+      mock_messages.create.return_value = mock_message
+      mock_twilio.messages = mock_messages
 
-        # 2. Extraer detalles
-        details = await services["nlp"].extract_appointment_details(
-            "Quiero el corte de dama mañana a las 2:30 PM"
-        )
-        assert details["servicio"] == "corte_dama"
-        assert details["fecha"] == "2024-03-22"
-        assert details["hora"] == "14:30"
+      # 1. Analyze initial message
+      result = await services["nlp"].analyze_message(
+          "I want to schedule a haircut for tomorrow at 2:30 PM"
+      )
+      assert result["intent"] == "schedule_appointment"
+      assert result["service"] == "haircut_female"
 
-        # 3. Crear cita
-        cita = Cita(
-            id=1,
-            cliente=sample_client,
-            fecha_hora=datetime.strptime(f"{details['fecha']} {details['hora']}", "%Y-%m-%d %H:%M"),
-            servicio=details["servicio"],
-            estado=EstadoCita.CONFIRMADA,
-            duracion_minutos=details["duracion_estimada"]
-        )
+      # 2. Extract details
+      details = await services["nlp"].extract_appointment_details(
+          "I want the haircut tomorrow at 2:30 PM"
+      )
+      assert details["service"] == "haircut_female"
+      assert details["date"] == "2024-03-22"
+      assert details["time"] == "14:30"
 
-        # 4. Enviar confirmación
-        await services["notification"].send_confirmation_message(cita)
+      # 3. Create appointment
+      appointment = Cita(
+          id=1,
+          client=sample_client,
+          datetime=datetime.strptime(
+              f"{details['date']} {details['time']}", "%Y-%m-%d %H:%M"
+          ),
+          service=details["service"],
+          status=EstadoCita.CONFIRMED,
+          duration_minutes=details["estimated_duration"]
+      )
 
-        # Verificar que se llamó al método create con los parámetros correctos
-        mock_messages.create.assert_called_once()
-        args = mock_messages.create.call_args[1]
-        assert args["to"] == f"whatsapp:{cita.cliente.telefono}"
-        assert "confirmada" in args["body"].lower() 
+      # 4. Send confirmation
+      await services["notification"].send_confirmation_message(appointment)
+
+      # Verify that the create method was called with the correct parameters
+      mock_messages.create.assert_called_once()
+      args = mock_messages.create.call_args[1]
+      assert args["to"] == f"whatsapp:{appointment.client.phone}"
+      assert "confirmed" in args["body"].lower()

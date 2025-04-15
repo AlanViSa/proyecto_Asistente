@@ -1,5 +1,5 @@
 """
-Servicio para la gestión de horarios bloqueados
+Service for managing blocked time slots
 """
 from typing import List, Optional
 from datetime import datetime, timedelta
@@ -10,13 +10,12 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.db.database import DatabaseError
 from app.models.horario_bloqueado import HorarioBloqueado
 from app.schemas.horario_bloqueado import HorarioBloqueadoCreate, HorarioBloqueadoUpdate
-
 class HorarioBloqueadoService:
-    """Servicio para operaciones CRUD de horarios bloqueados"""
-
+    """Service for CRUD operations on blocked time slots"""
+    
     @staticmethod
     async def get_by_id(db: AsyncSession, horario_id: int) -> Optional[HorarioBloqueado]:
-        """Obtiene un horario bloqueado por su ID"""
+        """Gets a blocked time slot by its ID"""
         try:
             result = await db.execute(
                 select(HorarioBloqueado).where(HorarioBloqueado.id == horario_id)
@@ -24,41 +23,42 @@ class HorarioBloqueadoService:
             return result.scalar_one_or_none()
         except SQLAlchemyError as e:
             raise DatabaseError(f"Error al obtener horario bloqueado: {str(e)}")
-
+    
     @staticmethod
-    async def get_by_fecha(
+    async def get_by_date(
         db: AsyncSession,
-        fecha: datetime,
-        incluir_parciales: bool = True
+        date: datetime,
+        include_partials: bool = True
     ) -> List[HorarioBloqueado]:
         """
-        Obtiene los horarios bloqueados para una fecha específica
+        Gets blocked time slots for a specific date
         
         Args:
-            db: Sesión de base de datos
-            fecha: Fecha a consultar
-            incluir_parciales: Si True, incluye bloqueos que intersectan parcialmente con la fecha
-            
+        db: Database session
+        date: Date to query
+        include_partials: If True, includes blocks that partially intersect with the date
+        
         Returns:
-            Lista de horarios bloqueados
+        List of blocked time slots
         """
         try:
-            fecha_inicio = fecha.replace(hour=0, minute=0, second=0, microsecond=0)
-            fecha_fin = fecha.replace(hour=23, minute=59, second=59, microsecond=999999)
+            start_date = date.replace(hour=0, minute=0, second=0, microsecond=0)
+            end_date = date.replace(hour=23, minute=59, second=59, microsecond=999999)
             
-            if incluir_parciales:
-                # Incluir bloqueos que intersectan con el día
+            if include_partials:
+                # Include blocks that intersect with the day
                 query = select(HorarioBloqueado).where(
                     or_(
-                        # Bloqueo comienza durante el día
+                        # Block starts during the day
                         and_(
-                            HorarioBloqueado.fecha_inicio >= fecha_inicio,
-                            HorarioBloqueado.fecha_inicio <= fecha_fin
+                            HorarioBloqueado.start_date >= start_date,
+                            HorarioBloqueado.start_date <= end_date
                         ),
-                        # Bloqueo termina durante el día
+                        
+                        # Block ends during the day
                         and_(
-                            HorarioBloqueado.fecha_fin >= fecha_inicio,
-                            HorarioBloqueado.fecha_fin <= fecha_fin
+                            HorarioBloqueado.end_date >= start_date,
+                            HorarioBloqueado.end_date <= end_date
                         ),
                         # Bloqueo abarca todo el día
                         and_(
@@ -68,10 +68,10 @@ class HorarioBloqueadoService:
                     )
                 )
             else:
-                # Solo bloqueos contenidos completamente en el día
+                # Only blocks completely contained within the day
                 query = select(HorarioBloqueado).where(
                     and_(
-                        HorarioBloqueado.fecha_inicio >= fecha_inicio,
+                        HorarioBloqueado.start_date >= start_date,
                         HorarioBloqueado.fecha_fin <= fecha_fin
                     )
                 )
@@ -80,124 +80,124 @@ class HorarioBloqueadoService:
             return list(result.scalars().all())
         except SQLAlchemyError as e:
             raise DatabaseError(f"Error al obtener horarios bloqueados por fecha: {str(e)}")
-
+    
     @staticmethod
-    async def get_by_rango(
+    async def get_by_range(
         db: AsyncSession,
-        fecha_inicio: datetime,
-        fecha_fin: datetime
+        start_date: datetime,
+        end_date: datetime
     ) -> List[HorarioBloqueado]:
-        """Obtiene los horarios bloqueados en un rango de fechas"""
+        """Gets blocked time slots within a date range"""
         try:
             query = select(HorarioBloqueado).where(
                 or_(
-                    # Bloqueo comienza durante el rango
+                    # Block starts during the range
                     and_(
-                        HorarioBloqueado.fecha_inicio >= fecha_inicio,
-                        HorarioBloqueado.fecha_inicio <= fecha_fin
+                        HorarioBloqueado.start_date >= start_date,
+                        HorarioBloqueado.start_date <= end_date
                     ),
-                    # Bloqueo termina durante el rango
+                    # Block ends during the range
                     and_(
-                        HorarioBloqueado.fecha_fin >= fecha_inicio,
-                        HorarioBloqueado.fecha_fin <= fecha_fin
+                        HorarioBloqueado.end_date >= start_date,
+                        HorarioBloqueado.end_date <= end_date
                     ),
-                    # Bloqueo abarca todo el rango
+                    # Block spans the entire range
                     and_(
-                        HorarioBloqueado.fecha_inicio <= fecha_inicio,
-                        HorarioBloqueado.fecha_fin >= fecha_fin
+                        HorarioBloqueado.start_date <= start_date,
+                        HorarioBloqueado.end_date >= end_date
                     )
                 )
             )
             result = await db.execute(query)
             return list(result.scalars().all())
         except SQLAlchemyError as e:
-            raise DatabaseError(f"Error al obtener horarios bloqueados por rango: {str(e)}")
-
+            raise DatabaseError(f"Error getting blocked time slots by range: {str(e)}")
+    
     @staticmethod
     async def create(
         db: AsyncSession,
-        horario_in: HorarioBloqueadoCreate
+        blocked_time_in: HorarioBloqueadoCreate
     ) -> HorarioBloqueado:
-        """Crea un nuevo horario bloqueado"""
+        """Creates a new blocked time slot"""
         try:
-            horario = HorarioBloqueado(
-                fecha_inicio=horario_in.fecha_inicio,
-                fecha_fin=horario_in.fecha_fin,
-                motivo=horario_in.motivo,
-                descripcion=horario_in.descripcion
+            blocked_time = HorarioBloqueado(
+                start_date=blocked_time_in.start_date,
+                end_date=blocked_time_in.end_date,
+                reason=blocked_time_in.reason,
+                description=blocked_time_in.description
             )
-            db.add(horario)
+            db.add(blocked_time)
             await db.commit()
-            await db.refresh(horario)
-            return horario
+            await db.refresh(blocked_time)
+            return blocked_time
         except SQLAlchemyError as e:
             await db.rollback()
-            raise DatabaseError(f"Error al crear horario bloqueado: {str(e)}")
-
+            raise DatabaseError(f"Error creating blocked time slot: {str(e)}")
+    
     @staticmethod
     async def update(
         db: AsyncSession,
-        horario: HorarioBloqueado,
-        horario_in: HorarioBloqueadoUpdate
+        blocked_time: HorarioBloqueado,
+        blocked_time_in: HorarioBloqueadoUpdate
     ) -> HorarioBloqueado:
-        """Actualiza un horario bloqueado existente"""
+        """Updates an existing blocked time slot"""
         try:
-            update_data = horario_in.model_dump(exclude_unset=True)
+            update_data = blocked_time_in.model_dump(exclude_unset=True)
             for field, value in update_data.items():
-                setattr(horario, field, value)
+                setattr(blocked_time, field, value)
             await db.commit()
-            await db.refresh(horario)
-            return horario
+            await db.refresh(blocked_time)
+            return blocked_time
         except SQLAlchemyError as e:
             await db.rollback()
-            raise DatabaseError(f"Error al actualizar horario bloqueado: {str(e)}")
-
+            raise DatabaseError(f"Error updating blocked time slot: {str(e)}")
+    
     @staticmethod
-    async def delete(db: AsyncSession, horario: HorarioBloqueado) -> None:
-        """Elimina un horario bloqueado"""
+    async def delete(db: AsyncSession, blocked_time: HorarioBloqueado) -> None:
+        """Deletes a blocked time slot"""
         try:
-            await db.delete(horario)
+            await db.delete(blocked_time)
             await db.commit()
         except SQLAlchemyError as e:
             await db.rollback()
-            raise DatabaseError(f"Error al eliminar horario bloqueado: {str(e)}")
-
+            raise DatabaseError(f"Error deleting blocked time slot: {str(e)}")
+    
     @staticmethod
-    async def is_horario_bloqueado(
+    async def is_time_slot_blocked(
         db: AsyncSession,
-        fecha_hora: datetime,
-        duracion_minutos: int
+        date_time: datetime,
+        duration_minutes: int
     ) -> bool:
         """
-        Verifica si un horario está bloqueado
+        Checks if a time slot is blocked
         
         Args:
-            db: Sesión de base de datos
-            fecha_hora: Fecha y hora a verificar
-            duracion_minutos: Duración en minutos
-            
+        db: Database session
+        date_time: Date and time to check
+        duration_minutes: Duration in minutes
+        
         Returns:
-            bool: True si el horario está bloqueado, False si no
+        bool: True if the time slot is blocked, False otherwise
         """
         try:
-            hora_fin = fecha_hora + timedelta(minutes=duracion_minutos)
+            end_time = date_time + timedelta(minutes=duration_minutes)
             
             query = select(HorarioBloqueado).where(
                 or_(
-                    # El horario comienza durante un bloqueo
+                    # The time slot starts during a block
                     and_(
-                        HorarioBloqueado.fecha_inicio <= fecha_hora,
-                        HorarioBloqueado.fecha_fin > fecha_hora
+                        HorarioBloqueado.start_date <= date_time,
+                        HorarioBloqueado.end_date > date_time
                     ),
-                    # El horario termina durante un bloqueo
+                    # The time slot ends during a block
                     and_(
-                        HorarioBloqueado.fecha_inicio < hora_fin,
-                        HorarioBloqueado.fecha_fin >= hora_fin
+                        HorarioBloqueado.start_date < end_time,
+                        HorarioBloqueado.end_date >= end_time
                     ),
-                    # El horario está completamente dentro de un bloqueo
+                    # The time slot is completely within a block
                     and_(
-                        HorarioBloqueado.fecha_inicio <= fecha_hora,
-                        HorarioBloqueado.fecha_fin >= hora_fin
+                        HorarioBloqueado.start_date <= date_time,
+                        HorarioBloqueado.end_date >= end_time
                     )
                 )
             )
@@ -205,4 +205,4 @@ class HorarioBloqueadoService:
             result = await db.execute(query)
             return result.first() is not None
         except SQLAlchemyError as e:
-            raise DatabaseError(f"Error al verificar horario bloqueado: {str(e)}") 
+            raise DatabaseError(f"Error checking blocked time slot: {str(e)}")

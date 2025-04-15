@@ -1,5 +1,5 @@
 """
-Pruebas de concurrencia y acceso simultáneo
+Concurrency and simultaneous access tests
 """
 import pytest
 import asyncio
@@ -12,190 +12,190 @@ from app.models.tipo_notificacion import TipoNotificacion
 from app.models.tipo_recordatorio import TipoRecordatorio
 
 async def crear_cita_concurrente(client: TestClient, cliente_id: int, servicio_id: int, hora: str):
-    """Función auxiliar para crear una cita de forma asíncrona"""
-    cita_data = {
-        "cliente_id": cliente_id,
-        "servicio_id": servicio_id,
-        "fecha": (datetime.now() + timedelta(days=1)).date().isoformat(),
-        "hora": hora,
-        "notas": "Cita de prueba"
+    """Auxiliary function to create an appointment asynchronously"""
+    appointment_data = {
+        "client_id": cliente_id,
+        "service_id": servicio_id,
+        "date": (datetime.now() + timedelta(days=1)).date().isoformat(),
+        "time": hora,
+        "notes": "Test appointment"
     }
-    return client.post("/api/v1/citas", json=cita_data)
+    return client.post("/api/v1/appointments", json=appointment_data)
 
 async def actualizar_cita_concurrente(client: TestClient, cita_id: int, notas: str):
-    """Función auxiliar para actualizar una cita de forma asíncrona"""
-    update_data = {"notas": notas}
-    return client.put(f"/api/v1/citas/{cita_id}", json=update_data)
+    """Auxiliary function to update an appointment asynchronously"""
+    update_data = {"notes": notas}
+    return client.put(f"/api/v1/appointments/{cita_id}", json=update_data)
 
 async def actualizar_cliente_concurrente(client: TestClient, cliente_id: int, telefono: str):
-    """Función auxiliar para actualizar un cliente de forma asíncrona"""
-    update_data = {"telefono": telefono}
-    return client.put(f"/api/v1/clientes/{cliente_id}", json=update_data)
+    """Auxiliary function to update a client asynchronously"""
+    update_data = {"phone": telefono}
+    return client.put(f"/api/v1/clients/{cliente_id}", json=update_data)
 
 def test_crear_citas_concurrentes(client: TestClient, test_cliente_data, test_servicio_data):
-    """Prueba la creación concurrente de citas"""
-    # Crear cliente
-    cliente_response = client.post("/api/v1/clientes", json=test_cliente_data)
-    cliente_id = cliente_response.json()["id"]
+    """Tests concurrent appointment creation"""
+    # Create client
+    client_response = client.post("/api/v1/clients", json=test_cliente_data)
+    client_id = client_response.json()["id"]
     
-    # Crear servicio
-    servicio_response = client.post("/api/v1/servicios", json=test_servicio_data)
-    servicio_id = servicio_response.json()["id"]
+    # Create service
+    service_response = client.post("/api/v1/services", json=test_servicio_data)
+    service_id = service_response.json()["id"]
     
-    # Crear citas de forma concurrente
-    horas = ["10:00", "11:00", "12:00", "13:00", "14:00"]
-    tareas = [
-        crear_cita_concurrente(client, cliente_id, servicio_id, hora)
-        for hora in horas
+    # Create appointments concurrently
+    times = ["10:00", "11:00", "12:00", "13:00", "14:00"]
+    tasks = [
+        crear_cita_concurrente(client, client_id, service_id, time)
+        for time in times
     ]
     
-    # Ejecutar tareas de forma concurrente
-    respuestas = asyncio.run(asyncio.gather(*tareas))
+    # Execute tasks concurrently
+    responses = asyncio.run(asyncio.gather(*tasks))
     
-    # Verificar que todas las citas se crearon correctamente
-    assert all(r.status_code == 200 for r in respuestas)
+    # Verify that all appointments were created successfully
+    assert all(r.status_code == 200 for r in responses)
     
-    # Verificar que las citas tienen diferentes IDs
-    cita_ids = [r.json()["id"] for r in respuestas]
-    assert len(set(cita_ids)) == len(cita_ids)
+    # Verify that appointments have different IDs
+    appointment_ids = [r.json()["id"] for r in responses]
+    assert len(set(appointment_ids)) == len(appointment_ids)
     
-    # Verificar que las citas tienen diferentes horas
-    citas_horas = [r.json()["hora"] for r in respuestas]
-    assert len(set(citas_horas)) == len(citas_horas)
+    # Verify that appointments have different times
+    appointment_times = [r.json()["time"] for r in responses]
+    assert len(set(appointment_times)) == len(appointment_times)
 
 def test_actualizar_cita_concurrente(client: TestClient, test_cliente_data, test_servicio_data):
-    """Prueba la actualización concurrente de una cita"""
-    # Crear cliente
-    cliente_response = client.post("/api/v1/clientes", json=test_cliente_data)
-    cliente_id = cliente_response.json()["id"]
+    """Tests concurrent update of an appointment"""
+    # Create client
+    client_response = client.post("/api/v1/clients", json=test_cliente_data)
+    client_id = client_response.json()["id"]
     
-    # Crear servicio
-    servicio_response = client.post("/api/v1/servicios", json=test_servicio_data)
-    servicio_id = servicio_response.json()["id"]
+    # Create service
+    service_response = client.post("/api/v1/services", json=test_servicio_data)
+    service_id = service_response.json()["id"]
     
-    # Crear cita
-    cita_data = {
-        "cliente_id": cliente_id,
-        "servicio_id": servicio_id,
-        "fecha": (datetime.now() + timedelta(days=1)).date().isoformat(),
-        "hora": "10:00",
-        "notas": "Cita inicial"
+    # Create appointment
+    appointment_data = {
+        "client_id": client_id,
+        "service_id": service_id,
+        "date": (datetime.now() + timedelta(days=1)).date().isoformat(),
+        "time": "10:00",
+        "notes": "Initial appointment"
     }
-    cita_response = client.post("/api/v1/citas", json=cita_data)
-    cita_id = cita_response.json()["id"]
+    appointment_response = client.post("/api/v1/appointments", json=appointment_data)
+    appointment_id = appointment_response.json()["id"]
     
-    # Actualizar cita de forma concurrente
-    notas = ["Nota 1", "Nota 2", "Nota 3", "Nota 4", "Nota 5"]
-    tareas = [
-        actualizar_cita_concurrente(client, cita_id, nota)
-        for nota in notas
+    # Update appointment concurrently
+    notes = ["Note 1", "Note 2", "Note 3", "Note 4", "Note 5"]
+    tasks = [
+        actualizar_cita_concurrente(client, appointment_id, note)
+        for note in notes
     ]
     
-    # Ejecutar tareas de forma concurrente
-    respuestas = asyncio.run(asyncio.gather(*tareas))
+    # Execute tasks concurrently
+    responses = asyncio.run(asyncio.gather(*tasks))
     
-    # Verificar que todas las actualizaciones fueron exitosas
-    assert all(r.status_code == 200 for r in respuestas)
+    # Verify that all updates were successful
+    assert all(r.status_code == 200 for r in responses)
     
-    # Obtener la cita actualizada
-    cita_response = client.get(f"/api/v1/citas/{cita_id}")
-    assert cita_response.status_code == 200
-    cita_actual = cita_response.json()
+    # Get the updated appointment
+    appointment_response = client.get(f"/api/v1/appointments/{appointment_id}")
+    assert appointment_response.status_code == 200
+    updated_appointment = appointment_response.json()
     
-    # Verificar que la última actualización se aplicó correctamente
-    assert cita_actual["notas"] in notas
+    # Verify that the last update was applied correctly
+    assert updated_appointment["notes"] in notes
 
 def test_actualizar_cliente_concurrente(client: TestClient, test_cliente_data):
-    """Prueba la actualización concurrente de un cliente"""
-    # Crear cliente
-    cliente_response = client.post("/api/v1/clientes", json=test_cliente_data)
-    cliente_id = cliente_response.json()["id"]
+    """Tests concurrent update of a client"""
+    # Create client
+    client_response = client.post("/api/v1/clients", json=test_cliente_data)
+    client_id = client_response.json()["id"]
     
-    # Actualizar cliente de forma concurrente
-    telefonos = ["111-111-1111", "222-222-2222", "333-333-3333", "444-444-4444", "555-555-5555"]
-    tareas = [
-        actualizar_cliente_concurrente(client, cliente_id, telefono)
-        for telefono in telefonos
+    # Update client concurrently
+    phones = ["111-111-1111", "222-222-2222", "333-333-3333", "444-444-4444", "555-555-5555"]
+    tasks = [
+        actualizar_cliente_concurrente(client, client_id, phone)
+        for phone in phones
     ]
     
-    # Ejecutar tareas de forma concurrente
-    respuestas = asyncio.run(asyncio.gather(*tareas))
+    # Execute tasks concurrently
+    responses = asyncio.run(asyncio.gather(*tasks))
     
-    # Verificar que todas las actualizaciones fueron exitosas
-    assert all(r.status_code == 200 for r in respuestas)
+    # Verify that all updates were successful
+    assert all(r.status_code == 200 for r in responses)
     
-    # Obtener el cliente actualizado
-    cliente_response = client.get(f"/api/v1/clientes/{cliente_id}")
-    assert cliente_response.status_code == 200
-    cliente_actual = cliente_response.json()
+    # Get the updated client
+    client_response = client.get(f"/api/v1/clients/{client_id}")
+    assert client_response.status_code == 200
+    updated_client = client_response.json()
     
-    # Verificar que la última actualización se aplicó correctamente
-    assert cliente_actual["telefono"] in telefonos
+    # Verify that the last update was applied correctly
+    assert updated_client["phone"] in phones
 
 def test_crear_notificaciones_concurrentes(client: TestClient, test_cliente_data):
-    """Prueba la creación concurrente de notificaciones"""
-    # Crear cliente
-    cliente_response = client.post("/api/v1/clientes", json=test_cliente_data)
-    cliente_id = cliente_response.json()["id"]
+    """Tests concurrent creation of notifications"""
+    # Create client
+    client_response = client.post("/api/v1/clients", json=test_cliente_data)
+    client_id = client_response.json()["id"]
     
-    # Crear notificaciones de forma concurrente
-    mensajes = [f"Mensaje {i+1}" for i in range(5)]
-    tareas = []
+    # Create notifications concurrently
+    messages = [f"Message {i+1}" for i in range(5)]
+    tasks = []
     
-    for mensaje in mensajes:
-        notificacion_data = {
-            "cliente_id": cliente_id,
-            "tipo": TipoNotificacion.CITA_PROGRAMADA,
-            "mensaje": mensaje,
-            "canal": "EMAIL"
+    for message in messages:
+        notification_data = {
+            "client_id": client_id,
+            "type": TipoNotificacion.CITA_PROGRAMADA,
+            "message": message,
+            "channel": "EMAIL"
         }
-        tareas.append(client.post("/api/v1/notificaciones", json=notificacion_data))
+        tasks.append(client.post("/api/v1/notifications", json=notification_data))
     
-    # Ejecutar tareas de forma concurrente
-    respuestas = asyncio.run(asyncio.gather(*tareas))
+    # Execute tasks concurrently
+    responses = asyncio.run(asyncio.gather(*tasks))
     
-    # Verificar que todas las notificaciones se crearon correctamente
-    assert all(r.status_code == 200 for r in respuestas)
+    # Verify that all notifications were created successfully
+    assert all(r.status_code == 200 for r in responses)
     
-    # Verificar que las notificaciones tienen diferentes IDs
-    notificacion_ids = [r.json()["id"] for r in respuestas]
-    assert len(set(notificacion_ids)) == len(notificacion_ids)
+    # Verify that notifications have different IDs
+    notification_ids = [r.json()["id"] for r in responses]
+    assert len(set(notification_ids)) == len(notification_ids)
     
-    # Verificar que las notificaciones tienen diferentes mensajes
-    notificaciones_mensajes = [r.json()["mensaje"] for r in respuestas]
-    assert len(set(notificaciones_mensajes)) == len(notificaciones_mensajes)
+    # Verify that notifications have different messages
+    notification_messages = [r.json()["message"] for r in responses]
+    assert len(set(notification_messages)) == len(notification_messages)
 
 def test_crear_recordatorios_concurrentes(client: TestClient, test_cliente_data):
-    """Prueba la creación concurrente de recordatorios"""
-    # Crear cliente
-    cliente_response = client.post("/api/v1/clientes", json=test_cliente_data)
-    cliente_id = cliente_response.json()["id"]
+    """Tests concurrent creation of reminders"""
+    # Create client
+    client_response = client.post("/api/v1/clients", json=test_cliente_data)
+    client_id = client_response.json()["id"]
     
-    # Crear recordatorios de forma concurrente
-    titulos = [f"Recordatorio {i+1}" for i in range(5)]
-    tareas = []
+    # Create reminders concurrently
+    titles = [f"Reminder {i+1}" for i in range(5)]
+    tasks = []
     
-    for titulo in titulos:
-        recordatorio_data = {
-            "cliente_id": cliente_id,
-            "tipo": TipoRecordatorio.CITA,
-            "titulo": titulo,
-            "mensaje": f"Mensaje para {titulo}",
-            "fecha_recordatorio": (datetime.now() + timedelta(days=1)).isoformat(),
-            "frecuencia": None
+    for title in titles:
+        reminder_data = {
+            "client_id": client_id,
+            "type": TipoRecordatorio.CITA,
+            "title": title,
+            "message": f"Message for {title}",
+            "reminder_date": (datetime.now() + timedelta(days=1)).isoformat(),
+            "frequency": None
         }
-        tareas.append(client.post("/api/v1/recordatorios", json=recordatorio_data))
+        tasks.append(client.post("/api/v1/reminders", json=reminder_data))
     
-    # Ejecutar tareas de forma concurrente
-    respuestas = asyncio.run(asyncio.gather(*tareas))
+    # Execute tasks concurrently
+    responses = asyncio.run(asyncio.gather(*tasks))
     
-    # Verificar que todos los recordatorios se crearon correctamente
-    assert all(r.status_code == 200 for r in respuestas)
+    # Verify that all reminders were created successfully
+    assert all(r.status_code == 200 for r in responses)
     
-    # Verificar que los recordatorios tienen diferentes IDs
-    recordatorio_ids = [r.json()["id"] for r in respuestas]
-    assert len(set(recordatorio_ids)) == len(recordatorio_ids)
+    # Verify that reminders have different IDs
+    reminder_ids = [r.json()["id"] for r in responses]
+    assert len(set(reminder_ids)) == len(reminder_ids)
     
-    # Verificar que los recordatorios tienen diferentes títulos
-    recordatorios_titulos = [r.json()["titulo"] for r in respuestas]
-    assert len(set(recordatorios_titulos)) == len(recordatorios_titulos) 
+    # Verify that reminders have different titles
+    reminder_titles = [r.json()["title"] for r in responses]
+    assert len(set(reminder_titles)) == len(reminder_titles)

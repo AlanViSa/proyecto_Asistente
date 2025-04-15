@@ -10,7 +10,7 @@ def nlp_service():
 
 @pytest.mark.asyncio
 async def test_analyze_message_faq():
-    """Prueba el análisis de un mensaje de consulta de FAQ"""
+    """Tests the analysis of a FAQ query message"""
     nlp_service = NLPService()
     
     mock_response = MagicMock()
@@ -27,15 +27,15 @@ async def test_analyze_message_faq():
     with patch.object(nlp_service.client, "chat") as mock_chat:
         mock_chat.completions.create = AsyncMock(return_value=mock_response)
         
-        result = await nlp_service.analyze_message("¿Cuál es el horario de atención?")
+        result = await nlp_service.analyze_message("What are the opening hours?")
         
-        assert result["intent"] == "consulta_horarios"
-        assert result["sentimiento"] == "neutral"
-        assert result["faq_key"] == "horario"
+        assert result["intent"] == "faq_query"
+        assert result["sentiment"] == "neutral"
+        assert result["faq_key"] == "schedule"
 
 @pytest.mark.asyncio
 async def test_analyze_message_appointment():
-    """Prueba el análisis de un mensaje de solicitud de cita"""
+    """Tests the analysis of an appointment request message"""
     nlp_service = NLPService()
     
     mock_response = MagicMock()
@@ -43,7 +43,7 @@ async def test_analyze_message_appointment():
         MagicMock(
             message=MagicMock(
                 function_call=MagicMock(
-                    arguments='{"intent": "agendar_cita", "servicio": "corte_dama", "sentimiento": "positivo"}'
+                    arguments='{"intent": "schedule_appointment", "service": "haircut_woman", "sentiment": "positive"}'
                 )
             )
         )
@@ -52,15 +52,15 @@ async def test_analyze_message_appointment():
     with patch.object(nlp_service.client, "chat") as mock_chat:
         mock_chat.completions.create = AsyncMock(return_value=mock_response)
         
-        result = await nlp_service.analyze_message("Quiero agendar un corte de dama")
+        result = await nlp_service.analyze_message("I want to schedule a haircut for a woman")
         
-        assert result["intent"] == "agendar_cita"
-        assert result["servicio"] == "corte_dama"
-        assert result["sentimiento"] == "positivo"
+        assert result["intent"] == "schedule_appointment"
+        assert result["service"] == "haircut_woman"
+        assert result["sentiment"] == "positive"
 
 @pytest.mark.asyncio
 async def test_extract_appointment_details():
-    """Prueba la extracción de detalles de una cita"""
+    """Tests the extraction of appointment details"""
     nlp_service = NLPService()
     
     mock_response = MagicMock()
@@ -70,10 +70,10 @@ async def test_extract_appointment_details():
                 function_call=MagicMock(
                     arguments='''
                     {
-                        "servicio": "corte_dama",
-                        "fecha": "2024-03-22",
-                        "hora": "14:30",
-                        "duracion_estimada": 60
+                        "service": "haircut_woman",
+                        "date": "2024-03-22",
+                        "time": "14:30",
+                        "estimated_duration": 60
                     }
                     '''
                 )
@@ -84,50 +84,50 @@ async def test_extract_appointment_details():
     with patch.object(nlp_service.client, "chat") as mock_chat:
         mock_chat.completions.create = AsyncMock(return_value=mock_response)
         
-        result = await nlp_service.extract_appointment_details("Quiero el corte de dama mañana a las 2:30 PM")
+        result = await nlp_service.extract_appointment_details("I want a haircut for a woman tomorrow at 2:30 PM")
         
-        assert result["servicio"] == "corte_dama"
-        assert result["fecha"] == "2024-03-22"
-        assert result["hora"] == "14:30"
-        assert result["duracion_estimada"] == 60
+        assert result["service"] == "haircut_woman"
+        assert result["date"] == "2024-03-22"
+        assert result["time"] == "14:30"
+        assert result["estimated_duration"] == 60
 
 @pytest.mark.asyncio
 async def test_analyze_message_error_handling():
-    """Prueba el manejo de errores en el análisis de mensajes"""
+    """Tests error handling in message analysis"""
     nlp_service = NLPService()
     
     with patch.object(nlp_service.client, "chat") as mock_chat:
         mock_chat.completions.create = AsyncMock(side_effect=Exception("API Error"))
         
-        result = await nlp_service.analyze_message("¿Cuál es el horario?")
+        result = await nlp_service.analyze_message("What is the schedule?")
         
         assert result["intent"] == "error"
-        assert result["sentimiento"] == "neutral"
+        assert result["sentiment"] == "neutral"
         assert result["error"] == "API Error"
 
 @pytest.mark.asyncio
 async def test_generate_response():
-    """Prueba la generación de respuestas"""
+    """Tests response generation"""
     nlp_service = NLPService()
     
     mock_response = MagicMock()
     mock_response.choices = [
         MagicMock(
             message=MagicMock(
-                content="Esta es una respuesta de prueba"
+                content="This is a test response"
             )
         )
     ]
 
-    analysis = {
-        "intent": "consulta_horarios",
-        "sentimiento": "neutral",
-        "faq_key": "horario"
+    analysis_result = {
+        "intent": "faq_query",
+        "sentiment": "neutral",
+        "faq_key": "schedule"
     }
 
     with patch.object(nlp_service.client, "chat") as mock_chat:
         mock_chat.completions.create = AsyncMock(return_value=mock_response)
         
-        result = await nlp_service.generate_response(analysis)
+        result = await nlp_service.generate_response(analysis_result)
         
-        assert result == "Esta es una respuesta de prueba" 
+        assert result == "This is a test response"

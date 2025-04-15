@@ -1,6 +1,3 @@
-"""
-Pruebas de rendimiento y carga
-"""
 import pytest
 import time
 import asyncio
@@ -11,10 +8,10 @@ from app.models.estado_notificacion import EstadoNotificacion
 from app.models.estado_recordatorio import EstadoRecordatorio
 from app.models.tipo_notificacion import TipoNotificacion
 from app.models.tipo_recordatorio import TipoRecordatorio
+from fastapi import status
 
-def test_crear_multiples_clientes_rendimiento(client: TestClient):
-    """Prueba el rendimiento al crear múltiples clientes"""
-    # Medir tiempo de inicio
+def test_create_multiple_clients_performance(client: TestClient):
+    """Tests the performance of creating multiple clients"""
     inicio = time.time()
     
     # Crear 100 clientes
@@ -25,22 +22,21 @@ def test_crear_multiples_clientes_rendimiento(client: TestClient):
             "apellido": f"Apellido{i}",
             "telefono": f"123-456-{i:04d}",
             "direccion": f"Dirección {i}"
-        }
-        response = client.post("/api/v1/clientes", json=cliente_data)
-        assert response.status_code == 200
+        }  
+        response = client.post("/api/v1/clients", json=cliente_data)
+        assert response.status_code == status.HTTP_200_OK
     
-    # Medir tiempo de fin
-    fin = time.time()
-    tiempo_total = fin - inicio
+    end_time = time.time()
+    total_time = end_time - inicio
     
-    # Verificar que el tiempo total sea razonable (menos de 10 segundos)
-    assert tiempo_total < 10
+    # Verify that the total time is reasonable (less than 10 seconds)
+    assert total_time < 10
 
-def test_obtener_multiples_clientes_rendimiento(client: TestClient):
-    """Prueba el rendimiento al obtener múltiples clientes"""
-    # Crear 100 clientes
+def test_get_multiple_clients_performance(client: TestClient):
+    """Tests the performance of getting multiple clients"""
+    # Create 100 clients
     for i in range(100):
-        cliente_data = {
+        client_data = {
             "email": f"cliente{i}@email.com",
             "nombre": f"Nombre{i}",
             "apellido": f"Apellido{i}",
@@ -48,25 +44,22 @@ def test_obtener_multiples_clientes_rendimiento(client: TestClient):
             "direccion": f"Dirección {i}"
         }
         client.post("/api/v1/clientes", json=cliente_data)
-    
-    # Medir tiempo de inicio
+
     inicio = time.time()
     
-    # Obtener todos los clientes
-    response = client.get("/api/v1/clientes")
-    assert response.status_code == 200
-    clientes = response.json()
+    # Get all clients
+    response = client.get("/api/v1/clients")
+    assert response.status_code == status.HTTP_200_OK
+    clients = response.json()
     
-    # Medir tiempo de fin
-    fin = time.time()
-    tiempo_total = fin - inicio
+    end_time = time.time()
+    total_time = end_time - inicio
     
-    # Verificar que el tiempo total sea razonable (menos de 2 segundos)
-    assert tiempo_total < 2
-    assert len(clientes) >= 100
+    # Verify that the total time is reasonable (less than 2 seconds)
+    assert total_time < 2
+    assert len(clients) >= 100
 
-def test_crear_multiples_citas_rendimiento(client: TestClient, test_cliente_data, test_servicio_data):
-    """Prueba el rendimiento al crear múltiples citas"""
+def test_create_multiple_appointments_performance(client: TestClient, test_client_data, test_service_data):
     # Crear cliente
     cliente_response = client.post("/api/v1/clientes", json=test_cliente_data)
     cliente_id = cliente_response.json()["id"]

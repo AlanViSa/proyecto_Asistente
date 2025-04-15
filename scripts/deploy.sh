@@ -1,56 +1,56 @@
 #!/bin/bash
 
-# Colores para mensajes
+# Colors for messages
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
-# Función para imprimir mensajes
+# Function to print messages
 print_message() {
     echo -e "${2}${1}${NC}"
 }
 
-# Verificar que estamos en el directorio correcto
+# Verify that we are in the correct directory
 if [ ! -f "docker-compose.yml" ]; then
-    print_message "Error: No se encontró docker-compose.yml. Asegúrate de estar en el directorio raíz del proyecto." "$RED"
+    print_message "Error: docker-compose.yml not found. Make sure you are in the project's root directory." "$RED"
     exit 1
 fi
 
-# Verificar variables de entorno
+# Verify environment variables
 if [ ! -f ".env.production" ]; then
-    print_message "Error: No se encontró .env.production. Por favor, crea el archivo con las variables necesarias." "$RED"
+    print_message "Error: .env.production not found. Please create the file with the necessary variables." "$RED"
     exit 1
 fi
 
-# Detener contenedores existentes
-print_message "Deteniendo contenedores existentes..." "$YELLOW"
+# Stop existing containers
+print_message "Stopping existing containers..." "$YELLOW"
 docker-compose down
 
-# Construir imágenes
-print_message "Construyendo imágenes Docker..." "$YELLOW"
+# Build images
+print_message "Building Docker images..." "$YELLOW"
 docker-compose build
 
-# Iniciar servicios
-print_message "Iniciando servicios..." "$YELLOW"
+# Start services
+print_message "Starting services..." "$YELLOW"
 docker-compose up -d
 
-# Esperar a que los servicios estén listos
-print_message "Esperando a que los servicios estén listos..." "$YELLOW"
+# Wait for services to be ready
+print_message "Waiting for services to be ready..." "$YELLOW"
 sleep 10
 
-# Verificar estado de los servicios
-print_message "Verificando estado de los servicios..." "$YELLOW"
+# Verify service status
+print_message "Verifying service status..." "$YELLOW"
 docker-compose ps
 
-# Ejecutar migraciones de base de datos
-print_message "Ejecutando migraciones de base de datos..." "$YELLOW"
+# Execute database migrations
+print_message "Executing database migrations..." "$YELLOW"
 docker-compose exec app alembic upgrade head
 
-# Verificar salud del sistema
-print_message "Verificando salud del sistema..." "$YELLOW"
+# Verify system health
+print_message "Verifying system health..." "$YELLOW"
 curl -s http://localhost:8000/health || {
-    print_message "Error: El servicio no está respondiendo correctamente." "$RED"
+    print_message "Error: The service is not responding correctly." "$RED"
     exit 1
 }
 
