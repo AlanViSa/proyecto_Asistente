@@ -1,7 +1,16 @@
 """
-Service for managing appointment reminders.
+Alias for ReminderService for backwards compatibility
 """
-from datetime import datetime, timedelta
+from app.services.reminder_service import ReminderService
+
+# Create Spanish alias for the service
+RecordatorioService = ReminderService
+
+# Legacy imports for backward compatibility
+from app.models.appointment import Appointment as Cita, AppointmentStatus as EstadoCita
+from app.models.client import Client as Cliente
+from app.models.sent_reminder import SentReminder as RecordatorioEnviado
+
 from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload

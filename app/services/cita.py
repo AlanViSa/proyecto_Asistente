@@ -1,4 +1,17 @@
 """
+Alias for AppointmentService for backwards compatibility
+"""
+from app.services.appointment_service import AppointmentService
+
+# Create Spanish alias for the service
+CitaService = AppointmentService
+
+# Legacy imports for backward compatibility 
+from app.models.appointment import Appointment as Cita, AppointmentStatus as EstadoCita
+from app.models.client import Client as Cliente
+from app.services.blocked_schedule_service import BlockedScheduleService as HorarioBloqueadoService
+
+"""
 Servicio para la gestión de citas
 """
 from typing import List, Optional, Tuple, Set
@@ -10,12 +23,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.db.database import DatabaseError
-from app.models.cita import Cita, EstadoCita
-from app.models.cliente import Cliente
 from app.schemas.cita import CitaCreate, CitaUpdate
 from app.core.config import settings
 from app.services.notification import NotificationService, NotificationTemplate
-from app.services.horario_bloqueado import HorarioBloqueadoService
 
 class CitaService:
     """Servicio para operaciones CRUD de citas"""

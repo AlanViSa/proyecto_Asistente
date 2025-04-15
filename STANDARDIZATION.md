@@ -60,7 +60,25 @@ To maintain backward compatibility during the transition, the following mechanis
    CitaService = AppointmentService
    ```
 
-3. **Import-All Support**: Both `__init__.py` files export all model and service names in their `__all__` lists.
+3. **Compatibility Files**: Legacy Spanish-named files now serve as aliases to their English counterparts:
+   ```python
+   # app/services/cliente.py
+   from app.services.client_service import ClientService
+   
+   # Create Spanish alias for the service
+   ClienteService = ClientService
+   ```
+
+4. **Enum Aliases**: For enumeration types, Spanish equivalents are provided:
+   ```python
+   # Example from notification.py
+   class CanalNotificacion(str, Enum):
+       EMAIL = NotificationChannel.EMAIL.value
+       SMS = NotificationChannel.SMS.value
+       WHATSAPP = NotificationChannel.WHATSAPP.value
+   ```
+
+5. **Import-All Support**: Both `__init__.py` files export all model and service names in their `__all__` lists.
 
 ## Migration Guide
 
@@ -85,6 +103,48 @@ When working with the codebase, please follow these guidelines:
    from app.services import ClienteService  # Alias for ClientService
    ```
 
+## Implementation Pattern
+
+The standardization follows these implementation patterns:
+
+1. **English Service File**: Contains the full implementation with English naming
+   ```python
+   # app/services/client_service.py
+   class ClientService:
+       """Service for client-related operations"""
+       # ... implementation ...
+   ```
+
+2. **Spanish Alias File**: Contains only import and aliasing
+   ```python
+   # app/services/cliente.py
+   from app.services.client_service import ClientService
+   ClienteService = ClientService
+   # Additional imports for backward compatibility
+   ```
+
+3. **Common Import Pattern**: Use the package imports
+   ```python
+   # Preferred pattern
+   from app.services import ClientService, AppointmentService
+   ```
+
 ## Documentation
 
-All new docstrings and comments should be written in English to maintain consistency with the naming standards. 
+All new docstrings and comments should be written in English to maintain consistency with the naming standards. Existing Spanish docstrings can remain as-is in legacy files, but any updates should transition to English.
+
+## File Organization
+
+With the standardization, files are organized as follows:
+
+1. **English Implementation Files**:
+   - Located in their appropriate directories (`app/models/`, `app/services/`, etc.)
+   - Contains full implementation with English naming
+
+2. **Spanish Compatibility Files**:
+   - Located in the same directories, retaining their original names
+   - Serve as thin wrappers that import and alias the English implementations
+
+3. **Central Import Modules**:
+   - `app/models/__init__.py` - Exposes all models with both English and Spanish names
+   - `app/services/__init__.py` - Exposes all services with both English and Spanish names 

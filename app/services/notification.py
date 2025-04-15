@@ -1,34 +1,23 @@
 """
-Servicio para el manejo de notificaciones a través de diferentes canales
+Alias for NotificationService for backwards compatibility
 """
+from app.services.notification_service import NotificationService, NotificationChannel, NotificationTemplate
+
+# Spanish aliases for enums
 from enum import Enum
-from typing import Optional, Dict, Any
-from datetime import datetime
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-import smtplib
-import logging
-from zoneinfo import ZoneInfo
 
-from app.core.config import settings
-from app.models.cita import Cita, EstadoCita
+class CanalNotificacion(str, Enum):
+    EMAIL = NotificationChannel.EMAIL.value
+    SMS = NotificationChannel.SMS.value
+    WHATSAPP = NotificationChannel.WHATSAPP.value
 
-logger = logging.getLogger(__name__)
-
-class NotificationChannel(str, Enum):
-    """Canales disponibles para notificaciones"""
-    EMAIL = "email"
-    SMS = "sms"
-    WHATSAPP = "whatsapp"
-
-class NotificationTemplate(str, Enum):
-    """Templates disponibles para notificaciones"""
-    CITA_CREADA = "cita_creada"
-    CITA_CONFIRMADA = "cita_confirmada"
-    CITA_CANCELADA = "cita_cancelada"
-    CITA_COMPLETADA = "cita_completada"
-    CITA_NO_ASISTIO = "cita_no_asistio"
-    RECORDATORIO = "recordatorio"
+class PlantillaNotificacion(str, Enum):
+    CITA_CREADA = NotificationTemplate.APPOINTMENT_CREATED.value
+    CITA_CONFIRMADA = NotificationTemplate.APPOINTMENT_CONFIRMED.value
+    CITA_CANCELADA = NotificationTemplate.APPOINTMENT_CANCELLED.value
+    CITA_COMPLETADA = NotificationTemplate.APPOINTMENT_COMPLETED.value
+    CITA_NO_ASISTIO = NotificationTemplate.APPOINTMENT_NO_SHOW.value
+    RECORDATORIO = NotificationTemplate.REMINDER.value
 
 class NotificationService:
     """Servicio para envío de notificaciones"""

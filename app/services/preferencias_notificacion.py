@@ -1,4 +1,15 @@
 """
+Alias for NotificationPreferenceService for backwards compatibility
+"""
+from app.services.notification_preference_service import NotificationPreferenceService
+
+# Create Spanish alias for the service
+PreferenciasNotificacionService = NotificationPreferenceService
+
+# Legacy imports for backward compatibility
+from app.models.client import Client as Cliente
+
+"""
 Servicio para la gestión de preferencias de notificación
 """
 from typing import Optional, List
@@ -7,7 +18,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.db.database import DatabaseError
-from app.models.cliente import Cliente
 from app.models.preferencias_notificacion import PreferenciasNotificacion
 from app.schemas.preferencias_notificacion import PreferenciasNotificacionCreate, PreferenciasNotificacionUpdate
 
