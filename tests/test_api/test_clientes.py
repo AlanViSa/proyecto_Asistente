@@ -1,230 +1,245 @@
 """
-Pruebas de integración para los endpoints de clientes
+Integration tests for the client endpoints
 """
-import pytest
 from fastapi.testclient import TestClient
-from app.models.estado_cliente import EstadoCliente
 
-def test_create_cliente(client: TestClient, test_cliente_data):
-    """Prueba la creación de un cliente a través de la API"""
-    response = client.post("/api/v1/clientes", json=test_cliente_data)
+from app.models.client import ClientStatus
+
+
+def test_create_client(client: TestClient, test_client_data):
+    """Tests the creation of a client through the API"""
+    response = client.post("/api/v1/clients", json=test_client_data)
     assert response.status_code == 200
     data = response.json()
-    
-    assert data["email"] == test_cliente_data["email"]
-    assert data["nombre"] == test_cliente_data["nombre"]
-    assert data["apellido"] == test_cliente_data["apellido"]
-    assert data["telefono"] == test_cliente_data["telefono"]
-    assert data["direccion"] == test_cliente_data["direccion"]
-    assert data["estado"] == EstadoCliente.ACTIVO
+
+    assert data["email"] == test_client_data["email"]
+    assert data["name"] == test_client_data["name"]
+    assert data["surname"] == test_client_data["surname"]
+    assert data["phone"] == test_client_data["phone"]
+    assert data["address"] == test_client_data["address"]
+    assert data["status"] == ClientStatus.ACTIVE
     assert "id" in data
-    assert "fecha_creacion" in data
-    assert "fecha_actualizacion" in data
+    assert "created_at" in data
+    assert "updated_at" in data
 
-def test_create_cliente_duplicate_email(client: TestClient, test_cliente_data):
-    """Prueba la creación de un cliente con email duplicado"""
-    # Crear primer cliente
-    client.post("/api/v1/clientes", json=test_cliente_data)
-    
-    # Intentar crear segundo cliente con el mismo email
-    response = client.post("/api/v1/clientes", json=test_cliente_data)
+
+def test_create_client_duplicate_email(client: TestClient, test_client_data):
+    """Tests the creation of a client with a duplicate email"""
+    # Create first client
+    client.post("/api/v1/clients", json=test_client_data)
+
+    # Attempt to create a second client with the same email
+    response = client.post("/api/v1/clients", json=test_client_data)
     assert response.status_code == 400
     assert "email" in response.json()["detail"].lower()
 
-def test_get_cliente(client: TestClient, test_cliente_data):
-    """Prueba la obtención de un cliente a través de la API"""
-    # Crear cliente
-    create_response = client.post("/api/v1/clientes", json=test_cliente_data)
-    cliente_id = create_response.json()["id"]
-    
-    # Obtener cliente
-    response = client.get(f"/api/v1/clientes/{cliente_id}")
+
+def test_get_client(client: TestClient, test_client_data):
+    """Tests retrieving a client through the API"""
+    # Create client
+    create_response = client.post("/api/v1/clients", json=test_client_data)
+    client_id = create_response.json()["id"]
+
+    # Get client
+    response = client.get(f"/api/v1/clients/{client_id}")
     assert response.status_code == 200
     data = response.json()
-    
-    assert data["id"] == cliente_id
-    assert data["email"] == test_cliente_data["email"]
-    assert data["nombre"] == test_cliente_data["nombre"]
-    assert data["apellido"] == test_cliente_data["apellido"]
-    assert data["telefono"] == test_cliente_data["telefono"]
-    assert data["direccion"] == test_cliente_data["direccion"]
-    assert data["estado"] == EstadoCliente.ACTIVO
-    assert "fecha_creacion" in data
-    assert "fecha_actualizacion" in data
 
-def test_get_cliente_not_found(client: TestClient):
-    """Prueba la obtención de un cliente que no existe"""
-    response = client.get("/api/v1/clientes/999")
+    assert data["id"] == client_id
+    assert data["email"] == test_client_data["email"]
+    assert data["name"] == test_client_data["name"]
+    assert data["surname"] == test_client_data["surname"]
+    assert data["phone"] == test_client_data["phone"]
+    assert data["address"] == test_client_data["address"]
+    assert data["status"] == ClientStatus.ACTIVE
+    assert "created_at" in data
+    assert "updated_at" in data
+
+
+def test_get_client_not_found(client: TestClient):
+    """Tests retrieving a client that does not exist"""
+    response = client.get("/api/v1/clients/999")
     assert response.status_code == 404
 
-def test_update_cliente(client: TestClient, test_cliente_data):
-    """Prueba la actualización de un cliente a través de la API"""
-    # Crear cliente
-    create_response = client.post("/api/v1/clientes", json=test_cliente_data)
-    cliente_id = create_response.json()["id"]
-    
-    # Actualizar cliente
+
+def test_update_client(client: TestClient, test_client_data):
+    """Tests updating a client through the API"""
+    # Create client
+    create_response = client.post("/api/v1/clients", json=test_client_data)
+    client_id = create_response.json()["id"]
+
+    # Update client
     update_data = {
-        "nombre": "Nombre Actualizado",
-        "apellido": "Apellido Actualizado",
-        "telefono": "1234567890",
-        "direccion": "Nueva dirección"
+        "name": "Updated Name",
+        "surname": "Updated Surname",
+        "phone": "1234567890",
+        "address": "New address",
     }
-    response = client.put(f"/api/v1/clientes/{cliente_id}", json=update_data)
+    response = client.put(f"/api/v1/clients/{client_id}", json=update_data)
     assert response.status_code == 200
     data = response.json()
-    
-    assert data["nombre"] == update_data["nombre"]
-    assert data["apellido"] == update_data["apellido"]
-    assert data["telefono"] == update_data["telefono"]
-    assert data["direccion"] == update_data["direccion"]
-    assert data["email"] == test_cliente_data["email"]
-    assert data["estado"] == EstadoCliente.ACTIVO
-    assert "fecha_actualizacion" in data
 
-def test_update_cliente_not_found(client: TestClient):
-    """Prueba la actualización de un cliente que no existe"""
+    assert data["name"] == update_data["name"]
+    assert data["surname"] == update_data["surname"]
+    assert data["phone"] == update_data["phone"]
+    assert data["address"] == update_data["address"]
+    assert data["email"] == test_client_data["email"]
+    assert data["status"] == ClientStatus.ACTIVE
+    assert "updated_at" in data
+
+
+def test_update_client_not_found(client: TestClient):
+    """Tests updating a client that does not exist"""
     update_data = {
-        "nombre": "Nombre Actualizado",
-        "apellido": "Apellido Actualizado",
-        "telefono": "1234567890",
-        "direccion": "Nueva dirección"
+        "name": "Updated Name",
+        "surname": "Updated Surname",
+        "phone": "1234567890",
+        "address": "New address",
     }
-    response = client.put("/api/v1/clientes/999", json=update_data)
+    response = client.put("/api/v1/clients/999", json=update_data)
     assert response.status_code == 404
 
-def test_update_cliente_duplicate_email(client: TestClient, test_cliente_data):
-    """Prueba la actualización de un cliente con email duplicado"""
-    # Crear dos clientes
-    cliente1_response = client.post("/api/v1/clientes", json=test_cliente_data)
-    cliente1_id = cliente1_response.json()["id"]
-    
-    cliente2_data = test_cliente_data.copy()
-    cliente2_data["email"] = "otro@email.com"
-    cliente2_response = client.post("/api/v1/clientes", json=cliente2_data)
-    cliente2_id = cliente2_response.json()["id"]
-    
-    # Intentar actualizar el segundo cliente con el email del primero
-    update_data = {"email": test_cliente_data["email"]}
-    response = client.put(f"/api/v1/clientes/{cliente2_id}", json=update_data)
+
+def test_update_client_duplicate_email(client: TestClient, test_client_data):
+    """Tests updating a client with a duplicate email"""
+    # Create two clients
+    client1_response = client.post("/api/v1/clients", json=test_client_data)
+    client1_id = client1_response.json()["id"]
+
+    client2_data = test_client_data.copy()
+    client2_data["email"] = "another@email.com"
+    client2_response = client.post("/api/v1/clients", json=client2_data)
+    client2_id = client2_response.json()["id"]
+
+    # Attempt to update the second client with the email of the first
+    update_data = {"email": test_client_data["email"]}
+    response = client.put(f"/api/v1/clients/{client2_id}", json=update_data)
     assert response.status_code == 400
     assert "email" in response.json()["detail"].lower()
 
-def test_delete_cliente(client: TestClient, test_cliente_data):
-    """Prueba la eliminación de un cliente a través de la API"""
-    # Crear cliente
-    create_response = client.post("/api/v1/clientes", json=test_cliente_data)
-    cliente_id = create_response.json()["id"]
-    
-    # Eliminar cliente
-    response = client.delete(f"/api/v1/clientes/{cliente_id}")
+
+def test_delete_client(client: TestClient, test_client_data):
+    """Tests deleting a client through the API"""
+    # Create client
+    create_response = client.post("/api/v1/clients", json=test_client_data)
+    client_id = create_response.json()["id"]
+
+    # Delete client
+    response = client.delete(f"/api/v1/clients/{client_id}")
     assert response.status_code == 204
-    
-    # Verificar que el cliente fue eliminado
-    get_response = client.get(f"/api/v1/clientes/{cliente_id}")
+
+    # Verify that the client was deleted
+    get_response = client.get(f"/api/v1/clients/{client_id}")
     assert get_response.status_code == 404
 
-def test_delete_cliente_not_found(client: TestClient):
-    """Prueba la eliminación de un cliente que no existe"""
-    response = client.delete("/api/v1/clientes/999")
+
+def test_delete_client_not_found(client: TestClient):
+    """Tests deleting a client that does not exist"""
+    response = client.delete("/api/v1/clients/999")
     assert response.status_code == 404
 
-def test_get_clientes(client: TestClient, test_cliente_data):
-    """Prueba la obtención de la lista de clientes a través de la API"""
-    # Crear varios clientes
+
+def test_get_clients(client: TestClient, test_client_data):
+    """Tests retrieving the list of clients through the API"""
+    # Create multiple clients
     for i in range(3):
-        cliente_data = test_cliente_data.copy()
-        cliente_data["email"] = f"cliente{i+1}@email.com"
-        client.post("/api/v1/clientes", json=cliente_data)
-    
-    # Obtener lista de clientes
-    response = client.get("/api/v1/clientes")
+        client_data = test_client_data.copy()
+        client_data["email"] = f"client{i+1}@email.com"
+        client.post("/api/v1/clients", json=client_data)
+
+    # Get list of clients
+    response = client.get("/api/v1/clients")
     assert response.status_code == 200
     data = response.json()
-    
+
     assert len(data) >= 3
-    assert all("id" in cliente for cliente in data)
-    assert all("email" in cliente for cliente in data)
-    assert all("nombre" in cliente for cliente in data)
-    assert all("apellido" in cliente for cliente in data)
-    assert all("telefono" in cliente for cliente in data)
-    assert all("direccion" in cliente for cliente in data)
-    assert all("estado" in cliente for cliente in data)
-    assert all("fecha_creacion" in cliente for cliente in data)
-    assert all("fecha_actualizacion" in cliente for cliente in data)
+    assert all("id" in client_data for client_data in data)
+    assert all("email" in client_data for client_data in data)
+    assert all("name" in client_data for client_data in data)
+    assert all("surname" in client_data for client_data in data)
+    assert all("phone" in client_data for client_data in data)
+    assert all("address" in client_data for client_data in data)
+    assert all("status" in client_data for client_data in data)
+    assert all("created_at" in client_data for client_data in data)
+    assert all("updated_at" in client_data for client_data in data)
 
-def test_activar_cliente(client: TestClient, test_cliente_data):
-    """Prueba la activación de un cliente a través de la API"""
-    # Crear cliente
-    create_response = client.post("/api/v1/clientes", json=test_cliente_data)
-    cliente_id = create_response.json()["id"]
-    
-    # Desactivar cliente
-    client.put(f"/api/v1/clientes/{cliente_id}/desactivar")
-    
-    # Activar cliente
-    response = client.put(f"/api/v1/clientes/{cliente_id}/activar")
+
+def test_activate_client(client: TestClient, test_client_data):
+    """Tests activating a client through the API"""
+    # Create client
+    create_response = client.post("/api/v1/clients", json=test_client_data)
+    client_id = create_response.json()["id"]
+
+    # Deactivate client
+    client.put(f"/api/v1/clients/{client_id}/deactivate")
+
+    # Activate client
+    response = client.put(f"/api/v1/clients/{client_id}/activate")
     assert response.status_code == 200
     data = response.json()
-    
-    assert data["estado"] == EstadoCliente.ACTIVO
 
-def test_desactivar_cliente(client: TestClient, test_cliente_data):
-    """Prueba la desactivación de un cliente a través de la API"""
-    # Crear cliente
-    create_response = client.post("/api/v1/clientes", json=test_cliente_data)
-    cliente_id = create_response.json()["id"]
-    
-    # Desactivar cliente
-    response = client.put(f"/api/v1/clientes/{cliente_id}/desactivar")
+    assert data["status"] == ClientStatus.ACTIVE
+
+
+def test_deactivate_client(client: TestClient, test_client_data):
+    """Tests deactivating a client through the API"""
+    # Create client
+    create_response = client.post("/api/v1/clients", json=test_client_data)
+    client_id = create_response.json()["id"]
+
+    # Deactivate client
+    response = client.put(f"/api/v1/clients/{client_id}/deactivate")
     assert response.status_code == 200
     data = response.json()
-    
-    assert data["estado"] == EstadoCliente.INACTIVO
 
-def test_activar_cliente_not_found(client: TestClient):
-    """Prueba la activación de un cliente que no existe"""
-    response = client.put("/api/v1/clientes/999/activar")
+    assert data["status"] == ClientStatus.INACTIVE
+
+
+def test_activate_client_not_found(client: TestClient):
+    """Tests activating a client that does not exist"""
+    response = client.put("/api/v1/clients/999/activate")
     assert response.status_code == 404
 
-def test_desactivar_cliente_not_found(client: TestClient):
-    """Prueba la desactivación de un cliente que no existe"""
-    response = client.put("/api/v1/clientes/999/desactivar")
+
+def test_deactivate_client_not_found(client: TestClient):
+    """Tests deactivating a client that does not exist"""
+    response = client.put("/api/v1/clients/999/deactivate")
     assert response.status_code == 404
 
-def test_buscar_clientes(client: TestClient, test_cliente_data):
-    """Prueba la búsqueda de clientes a través de la API"""
-    # Crear varios clientes
+
+def test_search_clients(client: TestClient, test_client_data):
+    """Tests searching for clients through the API"""
+    # Create multiple clients
     for i in range(3):
-        cliente_data = test_cliente_data.copy()
-        cliente_data["email"] = f"cliente{i+1}@email.com"
-        cliente_data["nombre"] = f"Nombre{i+1}"
-        cliente_data["apellido"] = f"Apellido{i+1}"
-        client.post("/api/v1/clientes", json=cliente_data)
-    
-    # Buscar clientes por nombre
-    response = client.get("/api/v1/clientes/buscar?nombre=Nombre1")
+        client_data = test_client_data.copy()
+        client_data["email"] = f"client{i+1}@email.com"
+        client_data["name"] = f"Name{i+1}"
+        client_data["surname"] = f"Surname{i+1}"
+        client.post("/api/v1/clients", json=client_data)
+
+    # Search clients by name
+    response = client.get("/api/v1/clients/search?name=Name1")
     assert response.status_code == 200
     data = response.json()
-    
+
     assert len(data) > 0
-    assert all("nombre" in cliente for cliente in data)
-    assert any(cliente["nombre"] == "Nombre1" for cliente in data)
-    
-    # Buscar clientes por apellido
-    response = client.get("/api/v1/clientes/buscar?apellido=Apellido2")
+    assert all("name" in client_data for client_data in data)
+    assert any(client_data["name"] == "Name1" for client_data in data)
+
+    # Search clients by surname
+    response = client.get("/api/v1/clients/search?surname=Surname2")
     assert response.status_code == 200
     data = response.json()
-    
+
     assert len(data) > 0
-    assert all("apellido" in cliente for cliente in data)
-    assert any(cliente["apellido"] == "Apellido2" for cliente in data)
-    
-    # Buscar clientes por email
-    response = client.get("/api/v1/clientes/buscar?email=cliente3@email.com")
+    assert all("surname" in client_data for client_data in data)
+    assert any(client_data["surname"] == "Surname2" for client_data in data)
+
+    # Search clients by email
+    response = client.get("/api/v1/clients/search?email=client3@email.com")
     assert response.status_code == 200
     data = response.json()
-    
+
     assert len(data) > 0
-    assert all("email" in cliente for cliente in data)
-    assert any(cliente["email"] == "cliente3@email.com" for cliente in data) 
+    assert all("email" in client_data for client_data in data)
+    assert any(client_data["email"] == "client3@email.com" for client_data in data)

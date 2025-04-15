@@ -1,12 +1,11 @@
 """
-Script para enviar recordatorios de citas
+Script to send appointment reminders
 """
 import asyncio
 import logging
 import json
 from datetime import datetime, timedelta
-from zoneinfo import ZoneInfo
-
+from app.core.config import settings
 from app.db.database import async_session_maker
 from app.services.recordatorio import RecordatorioService
 
@@ -22,51 +21,51 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-async def main():
-    """Función principal para enviar recordatorios"""
-    inicio = datetime.now()
-    logger.info("Iniciando envío de recordatorios")
+async def send_reminders():
+    """Main function to send reminders"""
+    start_time = datetime.now()
+    logger.info("Starting reminder sending process")
     
     try:
         async with async_session_maker() as db:
-            # Enviar recordatorios
-            resultados = await RecordatorioService.enviar_recordatorios(db)
+            # Send reminders
+            results = await RecordatorioService.send_reminders(db)
             
-            # Obtener estadísticas de las últimas 24 horas
-            fin = datetime.now()
-            stats = await RecordatorioService.get_estadisticas_recordatorios(
+            # Get statistics for the last 24 hours
+            end_time = datetime.now()
+            stats = await RecordatorioService.get_reminder_statistics(
                 db,
-                fecha_inicio=fin - timedelta(hours=24),
-                fecha_fin=fin
+                start_date=end_time - timedelta(hours=24),
+                end_date=end_time
             )
             
-            # Calcular duración
-            duracion = (fin - inicio).total_seconds()
+            # Calculate duration
+            duration = (end_time - start_time).total_seconds()
             
-            # Preparar resumen
-            resumen = {
-                "inicio": inicio.strftime("%Y-%m-%d %H:%M:%S"),
-                "fin": fin.strftime("%Y-%m-%d %H:%M:%S"),
-                "duracion_segundos": duracion,
-                "recordatorios_enviados": resultados,
-                "estadisticas_24h": stats
+            # Prepare summary
+            summary = {
+                "start_time": start_time.strftime("%Y-%m-%d %H:%M:%S"),
+                "end_time": end_time.strftime("%Y-%m-%d %H:%M:%S"),
+                "duration_seconds": duration,
+                "reminders_sent": results,
+                "statistics_24h": stats
             }
             
-            # Mostrar resumen
-            logger.info("Resumen de envío de recordatorios:")
-            logger.info(json.dumps(resumen, indent=2))
+            # Show summary
+            logger.info("Reminder sending summary:")
+            logger.info(json.dumps(summary, indent=2))
             
-            # Verificar si hay pocos recordatorios
-            total_enviados = sum(resultados.values())
-            if total_enviados == 0:
+            # Check if there were few reminders
+            total_sent = sum(results.values())
+            if total_sent == 0:
                 logger.warning(
-                    "No se enviaron recordatorios. "
-                    "Verifica que haya citas programadas y que los clientes tengan preferencias configuradas."
+                    "No reminders were sent. "
+                    "Check that there are scheduled appointments and that clients have notification preferences configured."
                 )
-            elif total_enviados < 5:  # Umbral arbitrario
+            elif total_sent < 5:  # Arbitrary threshold
                 logger.warning(
-                    f"Se enviaron pocos recordatorios ({total_enviados}). "
-                    "Verifica que las preferencias de notificación estén configuradas correctamente."
+                    f"Few reminders were sent ({total_sent}). "
+                    "Check that notification preferences are configured correctly."
                 )
                 
     except Exception as e:
@@ -75,9 +74,9 @@ async def main():
 
 if __name__ == "__main__":
     try:
-        asyncio.run(main())
+        asyncio.run(send_reminders())
     except KeyboardInterrupt:
-        logger.info("Proceso interrumpido por el usuario")
+        logger.info("Process interrupted by user")
     except Exception as e:
-        logger.error(f"Error en el proceso principal: {str(e)}")
+        logger.error(f"Error in main process: {str(e)}")
         raise 

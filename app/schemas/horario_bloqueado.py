@@ -1,52 +1,52 @@
 """
-Esquemas para la validación de datos de horarios bloqueados
+Schemas for blocked time validation.
 """
 from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel, Field, field_validator
 
-class HorarioBloqueadoBase(BaseModel):
-    """Esquema base para horarios bloqueados"""
-    fecha_inicio: datetime = Field(..., description="Fecha y hora de inicio del bloqueo")
-    fecha_fin: datetime = Field(..., description="Fecha y hora de fin del bloqueo")
-    motivo: str = Field(..., max_length=100, description="Motivo del bloqueo")
-    descripcion: Optional[str] = Field(None, description="Descripción detallada del bloqueo")
+class BlockedTimeBase(BaseModel):
+    """Base schema for blocked time slots."""
+    start_time: datetime = Field(..., description="Start date and time of the blocking.")
+    end_time: datetime = Field(..., description="End date and time of the blocking.")
+    reason: str = Field(..., max_length=100, description="Reason for the blocking.")
+    description: Optional[str] = Field(None, description="Detailed description of the blocking.")
 
-    @field_validator("fecha_fin")
+    @field_validator("end_time")
     @classmethod
-    def fecha_fin_mayor_inicio(cls, v: datetime, values: dict) -> datetime:
-        """Valida que la fecha de fin sea posterior a la de inicio"""
-        if "fecha_inicio" in values.data and v <= values.data["fecha_inicio"]:
-            raise ValueError("La fecha de fin debe ser posterior a la fecha de inicio")
+    def end_time_must_be_after_start_time(cls, v: datetime, values: dict) -> datetime:
+        """Validates that the end time is after the start time."""
+        if "start_time" in values.data and v <= values.data["start_time"]:
+            raise ValueError("The end time must be after the start time.")
         return v
 
     model_config = {
         "json_schema_extra": {
             "example": {
-                "fecha_inicio": "2024-03-20T09:00:00Z",
-                "fecha_fin": "2024-03-20T18:00:00Z",
-                "motivo": "Mantenimiento",
-                "descripcion": "Mantenimiento programado del local"
+                "start_time": "2024-03-20T09:00:00Z",
+                "end_time": "2024-03-20T18:00:00Z",
+                "reason": "Maintenance",
+                "description": "Scheduled maintenance of the premises"
             }
         }
     }
 
-class HorarioBloqueadoCreate(HorarioBloqueadoBase):
-    """Esquema para crear un horario bloqueado"""
+class BlockedTimeCreate(BlockedTimeBase):
+    """Schema for creating a blocked time slot."""
     pass
 
-class HorarioBloqueadoUpdate(HorarioBloqueadoBase):
-    """Esquema para actualizar un horario bloqueado"""
-    fecha_inicio: Optional[datetime] = Field(None, description="Fecha y hora de inicio del bloqueo")
-    fecha_fin: Optional[datetime] = Field(None, description="Fecha y hora de fin del bloqueo")
-    motivo: Optional[str] = Field(None, max_length=100, description="Motivo del bloqueo")
+class BlockedTimeUpdate(BlockedTimeBase):
+    """Schema for updating a blocked time slot."""
+    start_time: Optional[datetime] = Field(None, description="Start date and time of the blocking.")
+    end_time: Optional[datetime] = Field(None, description="End date and time of the blocking.")
+    reason: Optional[str] = Field(None, max_length=100, description="Reason for the blocking.")
 
-class HorarioBloqueado(HorarioBloqueadoBase):
-    """Esquema para respuesta de horario bloqueado"""
+class BlockedTime(BlockedTimeBase):
+    """Schema for blocked time slot response."""
     id: int
     created_at: datetime
     updated_at: datetime
 
     model_config = {
         "from_attributes": True
-    } 
+}

@@ -1,105 +1,106 @@
 """
-Pruebas unitarias para el servicio de recordatorios
+Unit tests for the reminders service
 """
 import pytest
 from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.services.recordatorio import RecordatorioService
 from app.services.cita import CitaService
 from app.services.cliente import ClienteService
 from app.schemas.cita import CitaCreate
 from app.schemas.cliente import ClienteCreate
 from app.models.cita import EstadoCita
-from app.services.notification import NotificationChannel
+from app.models.preferencias_notificacion import NotificationChannel
 
 @pytest.mark.asyncio
-async def test_get_citas_para_recordar(db_session: AsyncSession, test_user_data, test_cita_data):
-    """Prueba la obtención de citas para recordar"""
-    # Crear cliente y cita
-    cliente_in = ClienteCreate(**test_user_data)
-    cliente = await ClienteService.create(db_session, cliente_in)
-    
-    # Crear cita para dentro de 24 horas
-    fecha_hora = datetime.now() + timedelta(hours=24)
-    cita_data = test_cita_data.copy()
-    cita_data["fecha_hora"] = fecha_hora.isoformat()
-    cita_data["estado"] = EstadoCita.CONFIRMADA
-    
-    cita_in = CitaCreate(**cita_data)
-    cita = await CitaService.create(db_session, cita_in)
-    
-    # Obtener citas para recordar
-    citas = await RecordatorioService.get_citas_para_recordar(db_session, "24h")
-    
-    assert len(citas) > 0
-    assert cita.id in [c.id for c in citas]
+async def test_get_appointments_to_remind(db_session: AsyncSession, test_user_data, test_appointment_data):
+    """Tests getting appointments to remind"""
+    # Create client and appointment
+    client_in = ClienteCreate(**test_user_data)
+    client = await ClienteService.create(db_session, client_in)
+
+    # Create appointment for within 24 hours
+    date_time = datetime.now() + timedelta(hours=24)
+    appointment_data = test_appointment_data.copy()
+    appointment_data["date_time"] = date_time.isoformat()
+    appointment_data["status"] = EstadoCita.CONFIRMADA
+
+    appointment_in = CitaCreate(**appointment_data)
+    appointment = await CitaService.create(db_session, appointment_in)
+
+    # Get appointments to remind
+    appointments = await RecordatorioService.get_citas_para_recordar(db_session, "24h")
+
+    assert len(appointments) > 0
+    assert appointment.id in [c.id for c in appointments]
 
 @pytest.mark.asyncio
-async def test_recordatorio_ya_enviado(db_session: AsyncSession, test_user_data, test_cita_data):
-    """Prueba la verificación de recordatorios ya enviados"""
-    # Crear cliente y cita
-    cliente_in = ClienteCreate(**test_user_data)
-    cliente = await ClienteService.create(db_session, cliente_in)
-    
-    cita_in = CitaCreate(**test_cita_data)
-    cita = await CitaService.create(db_session, cita_in)
-    
-    # Verificar que no hay recordatorios enviados
-    ya_enviado = await RecordatorioService._recordatorio_ya_enviado(
-        db_session, cita.id, "24h", NotificationChannel.EMAIL
+async def test_reminder_already_sent(db_session: AsyncSession, test_user_data, test_appointment_data):
+    """Tests checking for reminders already sent"""
+    # Create client and appointment
+    client_in = ClienteCreate(**test_user_data)
+    client = await ClienteService.create(db_session, client_in)
+
+    appointment_in = CitaCreate(**test_appointment_data)
+    appointment = await CitaService.create(db_session, appointment_in)
+
+    # Verify that no reminders have been sent
+    already_sent = await RecordatorioService._reminder_already_sent(
+        db_session, appointment.id, "24h", NotificationChannel.EMAIL
     )
-    assert ya_enviado is False
-    
-    # Registrar un recordatorio
-    await RecordatorioService.registrar_recordatorio(
+    assert already_sent is False
+
+    # Register a reminder
+    await RecordatorioService.register_reminder(
         db_session,
-        cita,
+        appointment,
         "24h",
         NotificationChannel.EMAIL,
         True
     )
-    
-    # Verificar que ahora sí hay un recordatorio enviado
-    ya_enviado = await RecordatorioService._recordatorio_ya_enviado(
-        db_session, cita.id, "24h", NotificationChannel.EMAIL
+
+    # Verify that a reminder has now been sent
+    already_sent = await RecordatorioService._reminder_already_sent(
+        db_session, appointment.id, "24h", NotificationChannel.EMAIL
     )
-    assert ya_enviado is True
+    assert already_sent is True
 
 @pytest.mark.asyncio
-async def test_get_canales_cliente(db_session: AsyncSession, test_user_data):
-    """Prueba la obtención de canales de notificación del cliente"""
-    # Crear cliente sin preferencias
-    cliente_in = ClienteCreate(**test_user_data)
-    cliente = await ClienteService.create(db_session, cliente_in)
-    
-    # Verificar canales por defecto
-    canales = await RecordatorioService._get_canales_cliente(cliente)
-    assert NotificationChannel.EMAIL in canales
-    
-    # Crear preferencias con email y WhatsApp habilitados
-    await RecordatorioService.crear_preferencias_por_defecto(db_session, cliente.id)
-    
-    # Verificar canales actualizados
-    canales = await RecordatorioService._get_canales_cliente(cliente)
-    assert NotificationChannel.EMAIL in canales
-    assert NotificationChannel.WHATSAPP not in canales  # Por defecto está deshabilitado
+async def test_get_client_channels(db_session: AsyncSession, test_user_data):
+    """Tests getting client notification channels"""
+    # Create client without preferences
+    client_in = ClienteCreate(**test_user_data)
+    client = await ClienteService.create(db_session, client_in)
+
+    # Verify default channels
+    channels = await RecordatorioService._get_client_channels(client)
+    assert NotificationChannel.EMAIL in channels
+
+    # Create preferences with email and WhatsApp enabled
+    await RecordatorioService.create_default_preferences(db_session, client.id)
+
+    # Verify updated channels
+    channels = await RecordatorioService._get_client_channels(client)
+    assert NotificationChannel.EMAIL in channels
+    assert NotificationChannel.WHATSAPP in channels
 
 @pytest.mark.asyncio
-async def test_recordatorio_habilitado(db_session: AsyncSession, test_user_data):
-    """Prueba la verificación de recordatorios habilitados"""
-    # Crear cliente sin preferencias
-    cliente_in = ClienteCreate(**test_user_data)
-    cliente = await ClienteService.create(db_session, cliente_in)
-    
-    # Verificar que por defecto todos los recordatorios están habilitados
-    assert await RecordatorioService._recordatorio_habilitado(cliente, "24h") is True
-    assert await RecordatorioService._recordatorio_habilitado(cliente, "2h") is True
-    
-    # Crear preferencias con recordatorio de 2h deshabilitado
-    await RecordatorioService.crear_preferencias_por_defecto(db_session, cliente.id)
-    
-    # Verificar que el recordatorio de 2h está deshabilitado
-    assert await RecordatorioService._recordatorio_habilitado(cliente, "2h") is False
+async def test_reminder_enabled(db_session: AsyncSession, test_user_data):
+    """Tests checking for enabled reminders"""
+    # Create client without preferences
+    client_in = ClienteCreate(**test_user_data)
+    client = await ClienteService.create(db_session, client_in)
+
+    # Verify that by default all reminders are enabled
+    assert await RecordatorioService._reminder_enabled(client, "24h") is True
+    assert await RecordatorioService._reminder_enabled(client, "2h") is True
+
+    # Create preferences with 2h reminder disabled
+    await RecordatorioService.create_default_preferences(db_session, client.id)
+
+    # Verify that the 2h reminder is disabled
+    assert await RecordatorioService._reminder_enabled(client, "2h") is False
 
 @pytest.mark.asyncio
 async def test_ajustar_zona_horaria(db_session: AsyncSession, test_user_data):

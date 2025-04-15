@@ -8,7 +8,7 @@ from app.models import User, Appointment, Service
 from app.core.security import create_access_token
 from datetime import datetime, timedelta
 
-# Configuración de la base de datos de prueba
+# Test database configuration
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
 engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -38,7 +38,7 @@ def client(db):
         yield test_client
     app.dependency_overrides.clear()
 
-# Fixture para crear un usuario de prueba
+# Fixture to create a test user
 @pytest.fixture(scope="function")
 def test_user(db):
     user = User(
@@ -53,12 +53,12 @@ def test_user(db):
     db.refresh(user)
     return user
 
-# Fixture para crear un token de acceso
+# Fixture to create an access token
 @pytest.fixture(scope="function")
 def test_token(test_user):
     return create_access_token(data={"sub": test_user.email})
 
-# Tests de autenticación
+# Authentication tests
 def test_login(client, test_user):
     response = client.post(
         "/api/auth/login",
@@ -75,7 +75,7 @@ def test_login_incorrect_password(client, test_user):
     )
     assert response.status_code == 401
 
-# Tests de usuarios
+# User tests
 def test_create_user(client, test_token):
     response = client.post(
         "/api/users/",
@@ -102,7 +102,7 @@ def test_get_current_user(client, test_token, test_user):
     assert data["email"] == test_user.email
     assert data["full_name"] == test_user.full_name
 
-# Tests de citas
+# Appointment tests
 def test_create_appointment(client, test_token, test_user):
     response = client.post(
         "/api/appointments/",
@@ -127,7 +127,7 @@ def test_get_user_appointments(client, test_token, test_user):
     assert response.status_code == 200
     assert isinstance(response.json(), list)
 
-# Tests de servicios
+# Service tests
 def test_get_services(client):
     response = client.get("/api/services/")
     assert response.status_code == 200
@@ -149,7 +149,7 @@ def test_create_service(client, test_token):
     assert data["name"] == "Test Service"
     assert data["price"] == 50.0
 
-# Tests de validación
+# Validation tests
 def test_create_appointment_invalid_date(client, test_token):
     response = client.post(
         "/api/appointments/",
@@ -174,7 +174,7 @@ def test_create_user_invalid_email(client, test_token):
     )
     assert response.status_code == 422
 
-# Tests de permisos
+# Permission tests
 def test_access_protected_route_without_token(client):
     response = client.get("/api/users/me")
     assert response.status_code == 401

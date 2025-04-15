@@ -1,276 +1,274 @@
-"""
-Pruebas de integración para los endpoints de citas
-"""
+# Integration tests for appointment endpoints
 import pytest
 from fastapi.testclient import TestClient
 from datetime import datetime, timedelta
-from app.models.estado_cita import EstadoCita
+from app.models.estado_cita import EstadoCita  # Assuming this maps to appointment status
 
 def test_create_cita(client: TestClient, test_cliente_data, test_servicio_data):
-    """Prueba la creación de una cita a través de la API"""
-    # Crear cliente
-    cliente_response = client.post("/api/v1/clientes", json=test_cliente_data)
-    cliente_id = cliente_response.json()["id"]
+    """Tests the creation of an appointment via the API"""
+    # Create customer
+    customer_response = client.post("/api/v1/clientes", json=test_cliente_data)
+    customer_id = customer_response.json()["id"]
     
-    # Crear servicio
-    servicio_response = client.post("/api/v1/servicios", json=test_servicio_data)
-    servicio_id = servicio_response.json()["id"]
+    # Create service
+    service_response = client.post("/api/v1/servicios", json=test_servicio_data)
+    service_id = service_response.json()["id"]
     
-    # Crear cita
-    cita_data = {
-        "cliente_id": cliente_id,
-        "servicio_id": servicio_id,
-        "fecha": (datetime.now() + timedelta(days=1)).isoformat(),
-        "hora": "10:00",
-        "notas": "Notas de prueba"
+    # Create appointment
+    appointment_data = {
+        "customer_id": customer_id,
+        "service_id": service_id,
+        "date": (datetime.now() + timedelta(days=1)).isoformat(),
+        "time": "10:00",
+        "notes": "Test notes"
     }
-    response = client.post("/api/v1/citas", json=cita_data)
+    response = client.post("/api/v1/citas", json=appointment_data)
     assert response.status_code == 200
     data = response.json()
     
-    assert data["cliente_id"] == cliente_id
-    assert data["servicio_id"] == servicio_id
-    assert data["fecha"] == cita_data["fecha"]
-    assert data["hora"] == cita_data["hora"]
-    assert data["notas"] == cita_data["notas"]
-    assert data["estado"] == EstadoCita.PENDIENTE
+    assert data["customer_id"] == customer_id
+    assert data["service_id"] == service_id
+    assert data["date"] == appointment_data["date"]
+    assert data["time"] == appointment_data["time"]
+    assert data["notes"] == appointment_data["notes"]
+    assert data["status"] == EstadoCita.PENDIENTE  # Assuming PENDIENTE maps to pending
     assert "id" in data
 
 def test_create_cita_cliente_no_existe(client: TestClient, test_servicio_data):
-    """Prueba la creación de una cita para un cliente que no existe"""
-    # Crear servicio
-    servicio_response = client.post("/api/v1/servicios", json=test_servicio_data)
-    servicio_id = servicio_response.json()["id"]
+    """Tests creating an appointment for a non-existent customer"""
+    # Create service
+    service_response = client.post("/api/v1/servicios", json=test_servicio_data)
+    service_id = service_response.json()["id"]
     
-    # Intentar crear cita
-    cita_data = {
-        "cliente_id": 999,
-        "servicio_id": servicio_id,
-        "fecha": (datetime.now() + timedelta(days=1)).isoformat(),
-        "hora": "10:00",
-        "notas": "Notas de prueba"
+    # Attempt to create appointment
+    appointment_data = {
+        "customer_id": 999,
+        "service_id": service_id,
+        "date": (datetime.now() + timedelta(days=1)).isoformat(),
+        "time": "10:00",
+        "notes": "Test notes"
     }
-    response = client.post("/api/v1/citas", json=cita_data)
+    response = client.post("/api/v1/citas", json=appointment_data)
     assert response.status_code == 404
-    assert "cliente" in response.json()["detail"].lower()
+    assert "customer" in response.json()["detail"].lower()
 
 def test_create_cita_servicio_no_existe(client: TestClient, test_cliente_data):
-    """Prueba la creación de una cita para un servicio que no existe"""
-    # Crear cliente
-    cliente_response = client.post("/api/v1/clientes", json=test_cliente_data)
-    cliente_id = cliente_response.json()["id"]
+    """Tests creating an appointment for a non-existent service"""
+    # Create customer
+    customer_response = client.post("/api/v1/clientes", json=test_cliente_data)
+    customer_id = customer_response.json()["id"]
     
-    # Intentar crear cita
-    cita_data = {
-        "cliente_id": cliente_id,
-        "servicio_id": 999,
-        "fecha": (datetime.now() + timedelta(days=1)).isoformat(),
-        "hora": "10:00",
-        "notas": "Notas de prueba"
+    # Attempt to create appointment
+    appointment_data = {
+        "customer_id": customer_id,
+        "service_id": 999,
+        "date": (datetime.now() + timedelta(days=1)).isoformat(),
+        "time": "10:00",
+        "notes": "Test notes"
     }
-    response = client.post("/api/v1/citas", json=cita_data)
+    response = client.post("/api/v1/citas", json=appointment_data)
     assert response.status_code == 404
-    assert "servicio" in response.json()["detail"].lower()
+    assert "service" in response.json()["detail"].lower()
 
 def test_get_cita(client: TestClient, test_cliente_data, test_servicio_data):
-    """Prueba la obtención de una cita a través de la API"""
-    # Crear cliente
-    cliente_response = client.post("/api/v1/clientes", json=test_cliente_data)
-    cliente_id = cliente_response.json()["id"]
+    """Tests retrieving an appointment via the API"""
+    # Create customer
+    customer_response = client.post("/api/v1/clientes", json=test_cliente_data)
+    customer_id = customer_response.json()["id"]
     
-    # Crear servicio
-    servicio_response = client.post("/api/v1/servicios", json=test_servicio_data)
-    servicio_id = servicio_response.json()["id"]
+    # Create service
+    service_response = client.post("/api/v1/servicios", json=test_servicio_data)
+    service_id = service_response.json()["id"]
     
-    # Crear cita
-    cita_data = {
-        "cliente_id": cliente_id,
-        "servicio_id": servicio_id,
-        "fecha": (datetime.now() + timedelta(days=1)).isoformat(),
-        "hora": "10:00",
-        "notas": "Notas de prueba"
+    # Create appointment
+    appointment_data = {
+        "customer_id": customer_id,
+        "service_id": service_id,
+        "date": (datetime.now() + timedelta(days=1)).isoformat(),
+        "time": "10:00",
+        "notes": "Test notes"
     }
-    create_response = client.post("/api/v1/citas", json=cita_data)
-    cita_id = create_response.json()["id"]
+    create_response = client.post("/api/v1/citas", json=appointment_data)
+    appointment_id = create_response.json()["id"]
     
-    # Obtener cita
-    response = client.get(f"/api/v1/citas/{cita_id}")
+    # Get appointment
+    response = client.get(f"/api/v1/citas/{appointment_id}")
     assert response.status_code == 200
     data = response.json()
     
-    assert data["id"] == cita_id
-    assert data["cliente_id"] == cliente_id
-    assert data["servicio_id"] == servicio_id
-    assert data["fecha"] == cita_data["fecha"]
-    assert data["hora"] == cita_data["hora"]
-    assert data["notas"] == cita_data["notas"]
-    assert data["estado"] == EstadoCita.PENDIENTE
+    assert data["id"] == appointment_id
+    assert data["customer_id"] == customer_id
+    assert data["service_id"] == service_id
+    assert data["date"] == appointment_data["date"]
+    assert data["time"] == appointment_data["time"]
+    assert data["notes"] == appointment_data["notes"]
+    assert data["status"] == EstadoCita.PENDIENTE
 
 def test_get_cita_not_found(client: TestClient):
-    """Prueba la obtención de una cita que no existe"""
+    """Tests retrieving a non-existent appointment"""
     response = client.get("/api/v1/citas/999")
     assert response.status_code == 404
 
 def test_update_cita(client: TestClient, test_cliente_data, test_servicio_data):
-    """Prueba la actualización de una cita a través de la API"""
-    # Crear cliente
-    cliente_response = client.post("/api/v1/clientes", json=test_cliente_data)
-    cliente_id = cliente_response.json()["id"]
+    """Tests updating an appointment via the API"""
+    # Create customer
+    customer_response = client.post("/api/v1/clientes", json=test_cliente_data)
+    customer_id = customer_response.json()["id"]
     
-    # Crear servicio
-    servicio_response = client.post("/api/v1/servicios", json=test_servicio_data)
-    servicio_id = servicio_response.json()["id"]
+    # Create service
+    service_response = client.post("/api/v1/servicios", json=test_servicio_data)
+    service_id = service_response.json()["id"]
     
-    # Crear cita
-    cita_data = {
-        "cliente_id": cliente_id,
-        "servicio_id": servicio_id,
-        "fecha": (datetime.now() + timedelta(days=1)).isoformat(),
-        "hora": "10:00",
-        "notas": "Notas de prueba"
+    # Create appointment
+    appointment_data = {
+        "customer_id": customer_id,
+        "service_id": service_id,
+        "date": (datetime.now() + timedelta(days=1)).isoformat(),
+        "time": "10:00",
+        "notes": "Test notes"
     }
-    create_response = client.post("/api/v1/citas", json=cita_data)
-    cita_id = create_response.json()["id"]
+    create_response = client.post("/api/v1/citas", json=appointment_data)
+    appointment_id = create_response.json()["id"]
     
-    # Actualizar cita
+    # Update appointment
     update_data = {
-        "fecha": (datetime.now() + timedelta(days=2)).isoformat(),
-        "hora": "11:00",
-        "notas": "Notas actualizadas"
+        "date": (datetime.now() + timedelta(days=2)).isoformat(),
+        "time": "11:00",
+        "notes": "Updated notes"
     }
-    response = client.put(f"/api/v1/citas/{cita_id}", json=update_data)
+    response = client.put(f"/api/v1/citas/{appointment_id}", json=update_data)
     assert response.status_code == 200
     data = response.json()
     
-    assert data["fecha"] == update_data["fecha"]
-    assert data["hora"] == update_data["hora"]
-    assert data["notas"] == update_data["notas"]
-    assert data["estado"] == EstadoCita.PENDIENTE
+    assert data["date"] == update_data["date"]
+    assert data["time"] == update_data["time"]
+    assert data["notes"] == update_data["notes"]
+    assert data["status"] == EstadoCita.PENDIENTE
 
 def test_update_cita_not_found(client: TestClient):
-    """Prueba la actualización de una cita que no existe"""
+    """Tests updating a non-existent appointment"""
     update_data = {
-        "fecha": (datetime.now() + timedelta(days=2)).isoformat(),
-        "hora": "11:00",
-        "notas": "Notas actualizadas"
+        "date": (datetime.now() + timedelta(days=2)).isoformat(),
+        "time": "11:00",
+        "notes": "Updated notes"
     }
     response = client.put("/api/v1/citas/999", json=update_data)
     assert response.status_code == 404
 
 def test_cancel_cita(client: TestClient, test_cliente_data, test_servicio_data):
-    """Prueba la cancelación de una cita a través de la API"""
-    # Crear cliente
-    cliente_response = client.post("/api/v1/clientes", json=test_cliente_data)
-    cliente_id = cliente_response.json()["id"]
+    """Tests cancelling an appointment via the API"""
+    # Create customer
+    customer_response = client.post("/api/v1/clientes", json=test_cliente_data)
+    customer_id = customer_response.json()["id"]
     
-    # Crear servicio
-    servicio_response = client.post("/api/v1/servicios", json=test_servicio_data)
-    servicio_id = servicio_response.json()["id"]
+    # Create service
+    service_response = client.post("/api/v1/servicios", json=test_servicio_data)
+    service_id = service_response.json()["id"]
     
-    # Crear cita
-    cita_data = {
-        "cliente_id": cliente_id,
-        "servicio_id": servicio_id,
-        "fecha": (datetime.now() + timedelta(days=1)).isoformat(),
-        "hora": "10:00",
-        "notas": "Notas de prueba"
+    # Create appointment
+    appointment_data = {
+        "customer_id": customer_id,
+        "service_id": service_id,
+        "date": (datetime.now() + timedelta(days=1)).isoformat(),
+        "time": "10:00",
+        "notes": "Test notes"
     }
-    create_response = client.post("/api/v1/citas", json=cita_data)
-    cita_id = create_response.json()["id"]
+    create_response = client.post("/api/v1/citas", json=appointment_data)
+    appointment_id = create_response.json()["id"]
     
-    # Cancelar cita
-    response = client.put(f"/api/v1/citas/{cita_id}/cancelar")
+    # Cancel appointment
+    response = client.put(f"/api/v1/citas/{appointment_id}/cancelar")
     assert response.status_code == 200
     data = response.json()
     
-    assert data["estado"] == EstadoCita.CANCELADA
+    assert data["status"] == EstadoCita.CANCELADA  # Assuming CANCELADA maps to cancelled
 
 def test_complete_cita(client: TestClient, test_cliente_data, test_servicio_data):
-    """Prueba la finalización de una cita a través de la API"""
-    # Crear cliente
-    cliente_response = client.post("/api/v1/clientes", json=test_cliente_data)
-    cliente_id = cliente_response.json()["id"]
+    """Tests completing an appointment via the API"""
+    # Create customer
+    customer_response = client.post("/api/v1/clientes", json=test_cliente_data)
+    customer_id = customer_response.json()["id"]
     
-    # Crear servicio
-    servicio_response = client.post("/api/v1/servicios", json=test_servicio_data)
-    servicio_id = servicio_response.json()["id"]
+    # Create service
+    service_response = client.post("/api/v1/servicios", json=test_servicio_data)
+    service_id = service_response.json()["id"]
     
-    # Crear cita
-    cita_data = {
-        "cliente_id": cliente_id,
-        "servicio_id": servicio_id,
-        "fecha": (datetime.now() + timedelta(days=1)).isoformat(),
-        "hora": "10:00",
-        "notas": "Notas de prueba"
+    # Create appointment
+    appointment_data = {
+        "customer_id": customer_id,
+        "service_id": service_id,
+        "date": (datetime.now() + timedelta(days=1)).isoformat(),
+        "time": "10:00",
+        "notes": "Test notes"
     }
-    create_response = client.post("/api/v1/citas", json=cita_data)
-    cita_id = create_response.json()["id"]
+    create_response = client.post("/api/v1/citas", json=appointment_data)
+    appointment_id = create_response.json()["id"]
     
-    # Finalizar cita
-    response = client.put(f"/api/v1/citas/{cita_id}/finalizar")
+    # Complete appointment
+    response = client.put(f"/api/v1/citas/{appointment_id}/finalizar")
     assert response.status_code == 200
     data = response.json()
     
-    assert data["estado"] == EstadoCita.COMPLETADA
+    assert data["status"] == EstadoCita.COMPLETADA  # Assuming COMPLETADA maps to completed
 
 def test_no_show_cita(client: TestClient, test_cliente_data, test_servicio_data):
-    """Prueba el registro de no asistencia de una cita a través de la API"""
-    # Crear cliente
-    cliente_response = client.post("/api/v1/clientes", json=test_cliente_data)
-    cliente_id = cliente_response.json()["id"]
+    """Tests registering a no-show for an appointment via the API"""
+    # Create customer
+    customer_response = client.post("/api/v1/clientes", json=test_cliente_data)
+    customer_id = customer_response.json()["id"]
     
-    # Crear servicio
-    servicio_response = client.post("/api/v1/servicios", json=test_servicio_data)
-    servicio_id = servicio_response.json()["id"]
+    # Create service
+    service_response = client.post("/api/v1/servicios", json=test_servicio_data)
+    service_id = service_response.json()["id"]
     
-    # Crear cita
-    cita_data = {
-        "cliente_id": cliente_id,
-        "servicio_id": servicio_id,
-        "fecha": (datetime.now() + timedelta(days=1)).isoformat(),
-        "hora": "10:00",
-        "notas": "Notas de prueba"
+    # Create appointment
+    appointment_data = {
+        "customer_id": customer_id,
+        "service_id": service_id,
+        "date": (datetime.now() + timedelta(days=1)).isoformat(),
+        "time": "10:00",
+        "notes": "Test notes"
     }
-    create_response = client.post("/api/v1/citas", json=cita_data)
-    cita_id = create_response.json()["id"]
+    create_response = client.post("/api/v1/citas", json=appointment_data)
+    appointment_id = create_response.json()["id"]
     
-    # Registrar no asistencia
-    response = client.put(f"/api/v1/citas/{cita_id}/no-show")
+    # Register no-show
+    response = client.put(f"/api/v1/citas/{appointment_id}/no-show")
     assert response.status_code == 200
     data = response.json()
     
-    assert data["estado"] == EstadoCita.NO_SHOW
+    assert data["status"] == EstadoCita.NO_SHOW
 
 def test_get_citas_cliente(client: TestClient, test_cliente_data, test_servicio_data):
-    """Prueba la obtención de las citas de un cliente a través de la API"""
-    # Crear cliente
-    cliente_response = client.post("/api/v1/clientes", json=test_cliente_data)
-    cliente_id = cliente_response.json()["id"]
+    """Tests retrieving a customer's appointments via the API"""
+    # Create customer
+    customer_response = client.post("/api/v1/clientes", json=test_cliente_data)
+    customer_id = customer_response.json()["id"]
     
-    # Crear servicio
-    servicio_response = client.post("/api/v1/servicios", json=test_servicio_data)
-    servicio_id = servicio_response.json()["id"]
+    # Create service
+    service_response = client.post("/api/v1/servicios", json=test_servicio_data)
+    service_id = service_response.json()["id"]
     
-    # Crear varias citas para el cliente
+    # Create multiple appointments for the customer
     for i in range(3):
-        cita_data = {
-            "cliente_id": cliente_id,
-            "servicio_id": servicio_id,
-            "fecha": (datetime.now() + timedelta(days=i+1)).isoformat(),
-            "hora": "10:00",
-            "notas": f"Notas de prueba {i+1}"
+        appointment_data = {
+            "customer_id": customer_id,
+            "service_id": service_id,
+            "date": (datetime.now() + timedelta(days=i+1)).isoformat(),
+            "time": "10:00",
+            "notes": f"Test notes {i+1}"
         }
-        client.post("/api/v1/citas", json=cita_data)
+        client.post("/api/v1/citas", json=appointment_data)
     
-    # Obtener citas del cliente
-    response = client.get(f"/api/v1/clientes/{cliente_id}/citas")
+    # Get customer appointments
+    response = client.get(f"/api/v1/clientes/{customer_id}/citas")
     assert response.status_code == 200
     data = response.json()
     
     assert len(data) >= 3
-    assert all(cita["cliente_id"] == cliente_id for cita in data)
-    assert all("id" in cita for cita in data)
-    assert all("fecha" in cita for cita in data)
-    assert all("hora" in cita for cita in data)
-    assert all("notas" in cita for cita in data)
-    assert all("estado" in cita for cita in data) 
+    assert all(appointment["customer_id"] == customer_id for appointment in data)
+    assert all("id" in appointment for appointment in data)
+    assert all("date" in appointment for appointment in data)
+    assert all("time" in appointment for appointment in data)
+    assert all("notes" in appointment for appointment in data)
+    assert all("status" in appointment for appointment in data)

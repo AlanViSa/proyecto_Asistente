@@ -1,189 +1,188 @@
 """
-Pruebas de integración para los endpoints de horarios
+Integration tests for schedule endpoints.
 """
-import pytest
 from fastapi.testclient import TestClient
-from datetime import datetime, timedelta
-from app.models.estado_horario import EstadoHorario
+
+from app.models.schedule_state import ScheduleState
 
 def test_create_horario(client: TestClient, test_horario_data):
-    """Prueba la creación de un horario a través de la API"""
-    response = client.post("/api/v1/horarios", json=test_horario_data)
+    """Tests the creation of a schedule via the API."""
+    response = client.post("/api/v1/schedules", json=test_horario_data)
     assert response.status_code == 200
-    data = response.json()
+    response_data = response.json()
     
-    assert data["dia_semana"] == test_horario_data["dia_semana"]
-    assert data["hora_inicio"] == test_horario_data["hora_inicio"]
-    assert data["hora_fin"] == test_horario_data["hora_fin"]
-    assert data["estado"] == EstadoHorario.ACTIVO
-    assert "id" in data
+    assert response_data["day_of_week"] == test_horario_data["day_of_week"]
+    assert response_data["start_time"] == test_horario_data["start_time"]
+    assert response_data["end_time"] == test_horario_data["end_time"]
+    assert response_data["state"] == ScheduleState.ACTIVE
+    assert "id" in response_data
 
 def test_create_horario_solapado(client: TestClient, test_horario_data):
-    """Prueba la creación de un horario que se solapa con otro existente"""
-    # Crear primer horario
-    client.post("/api/v1/horarios", json=test_horario_data)
+    """Tests the creation of a schedule that overlaps with an existing one."""
+    # Create first schedule
+    client.post("/api/v1/schedules", json=test_horario_data)
     
-    # Intentar crear segundo horario que se solapa
-    horario_solapado = test_horario_data.copy()
-    horario_solapado["hora_inicio"] = "09:00"  # Se solapa con el horario existente
-    response = client.post("/api/v1/horarios", json=horario_solapado)
+    # Attempt to create a second overlapping schedule
+    overlapping_schedule = test_horario_data.copy()
+    overlapping_schedule["start_time"] = "09:00"  # Overlaps with the existing schedule
+    response = client.post("/api/v1/schedules", json=overlapping_schedule)
     assert response.status_code == 400
-    assert "solapamiento" in response.json()["detail"].lower()
+    assert "overlap" in response.json()["detail"].lower()
 
 def test_get_horario(client: TestClient, test_horario_data):
-    """Prueba la obtención de un horario a través de la API"""
-    # Crear horario
-    create_response = client.post("/api/v1/horarios", json=test_horario_data)
-    horario_id = create_response.json()["id"]
+    """Tests retrieving a schedule via the API."""
+    # Create a schedule
+    create_response = client.post("/api/v1/schedules", json=test_horario_data)
+    schedule_id = create_response.json()["id"]
     
-    # Obtener horario
-    response = client.get(f"/api/v1/horarios/{horario_id}")
+    # Get schedule
+    response = client.get(f"/api/v1/schedules/{schedule_id}")
     assert response.status_code == 200
-    data = response.json()
+    response_data = response.json()
     
-    assert data["id"] == horario_id
-    assert data["dia_semana"] == test_horario_data["dia_semana"]
-    assert data["hora_inicio"] == test_horario_data["hora_inicio"]
-    assert data["hora_fin"] == test_horario_data["hora_fin"]
-    assert data["estado"] == EstadoHorario.ACTIVO
+    assert response_data["id"] == schedule_id
+    assert response_data["day_of_week"] == test_horario_data["day_of_week"]
+    assert response_data["start_time"] == test_horario_data["start_time"]
+    assert response_data["end_time"] == test_horario_data["end_time"]
+    assert response_data["state"] == ScheduleState.ACTIVE
 
 def test_get_horario_not_found(client: TestClient):
-    """Prueba la obtención de un horario que no existe"""
-    response = client.get("/api/v1/horarios/999")
+    """Tests retrieving a schedule that does not exist."""
+    response = client.get("/api/v1/schedules/999")
     assert response.status_code == 404
 
 def test_update_horario(client: TestClient, test_horario_data):
-    """Prueba la actualización de un horario a través de la API"""
-    # Crear horario
-    create_response = client.post("/api/v1/horarios", json=test_horario_data)
-    horario_id = create_response.json()["id"]
+    """Tests updating a schedule via the API."""
+    # Create schedule
+    create_response = client.post("/api/v1/schedules", json=test_horario_data)
+    schedule_id = create_response.json()["id"]
     
-    # Actualizar horario
-    update_data = {
-        "dia_semana": 2,
-        "hora_inicio": "10:00",
-        "hora_fin": "18:00"
+    # Update schedule
+    schedule_update_data = {
+        "day_of_week": 2,
+        "start_time": "10:00",
+        "end_time": "18:00"
     }
-    response = client.put(f"/api/v1/horarios/{horario_id}", json=update_data)
+    response = client.put(f"/api/v1/schedules/{schedule_id}", json=schedule_update_data)
     assert response.status_code == 200
-    data = response.json()
+    response_data = response.json()
     
-    assert data["dia_semana"] == update_data["dia_semana"]
-    assert data["hora_inicio"] == update_data["hora_inicio"]
-    assert data["hora_fin"] == update_data["hora_fin"]
-    assert data["estado"] == EstadoHorario.ACTIVO
+    assert response_data["day_of_week"] == schedule_update_data["day_of_week"]
+    assert response_data["start_time"] == schedule_update_data["start_time"]
+    assert response_data["end_time"] == schedule_update_data["end_time"]
+    assert response_data["state"] == ScheduleState.ACTIVE
 
 def test_update_horario_not_found(client: TestClient):
-    """Prueba la actualización de un horario que no existe"""
-    update_data = {
-        "dia_semana": 2,
-        "hora_inicio": "10:00",
-        "hora_fin": "18:00"
+    """Tests updating a schedule that does not exist."""
+    schedule_update_data = {
+        "day_of_week": 2,
+        "start_time": "10:00",
+        "end_time": "18:00"
     }
-    response = client.put("/api/v1/horarios/999", json=update_data)
+    response = client.put("/api/v1/schedules/999", json=schedule_update_data)
     assert response.status_code == 404
 
 def test_update_horario_solapado(client: TestClient, test_horario_data):
-    """Prueba la actualización de un horario que se solapa con otro existente"""
-    # Crear dos horarios
-    horario1_response = client.post("/api/v1/horarios", json=test_horario_data)
-    horario1_id = horario1_response.json()["id"]
+    """Tests updating a schedule that overlaps with an existing one."""
+    # Create two schedules
+    schedule1_response = client.post("/api/v1/schedules", json=test_horario_data)
+    schedule1_id = schedule1_response.json()["id"]
     
-    horario2_data = test_horario_data.copy()
-    horario2_data["dia_semana"] = 2
-    horario2_response = client.post("/api/v1/horarios", json=horario2_data)
-    horario2_id = horario2_response.json()["id"]
+    schedule2_data = test_horario_data.copy()
+    schedule2_data["day_of_week"] = 2
+    schedule2_response = client.post("/api/v1/schedules", json=schedule2_data)
+    schedule2_id = schedule2_response.json()["id"]
     
-    # Intentar actualizar el segundo horario para que se solape con el primero
-    update_data = {"dia_semana": test_horario_data["dia_semana"]}
-    response = client.put(f"/api/v1/horarios/{horario2_id}", json=update_data)
+    # Attempt to update the second schedule to overlap with the first
+    schedule_update_data = {"day_of_week": test_horario_data["day_of_week"]}
+    response = client.put(f"/api/v1/schedules/{schedule2_id}", json=schedule_update_data)
     assert response.status_code == 400
-    assert "solapamiento" in response.json()["detail"].lower()
+    assert "overlap" in response.json()["detail"].lower()
 
 def test_delete_horario(client: TestClient, test_horario_data):
-    """Prueba la eliminación de un horario a través de la API"""
-    # Crear horario
-    create_response = client.post("/api/v1/horarios", json=test_horario_data)
-    horario_id = create_response.json()["id"]
+    """Tests deleting a schedule via the API."""
+    # Create schedule
+    create_response = client.post("/api/v1/schedules", json=test_horario_data)
+    schedule_id = create_response.json()["id"]
     
-    # Eliminar horario
-    response = client.delete(f"/api/v1/horarios/{horario_id}")
+    # Delete schedule
+    response = client.delete(f"/api/v1/schedules/{schedule_id}")
     assert response.status_code == 204
     
-    # Verificar que el horario fue eliminado
-    get_response = client.get(f"/api/v1/horarios/{horario_id}")
+    # Verify that the schedule was deleted
+    get_response = client.get(f"/api/v1/schedules/{schedule_id}")
     assert get_response.status_code == 404
 
 def test_delete_horario_not_found(client: TestClient):
-    """Prueba la eliminación de un horario que no existe"""
-    response = client.delete("/api/v1/horarios/999")
+    """Tests deleting a schedule that does not exist."""
+    response = client.delete("/api/v1/schedules/999")
     assert response.status_code == 404
 
 def test_deactivate_horario(client: TestClient, test_horario_data):
-    """Prueba la desactivación de un horario a través de la API"""
-    # Crear horario
-    create_response = client.post("/api/v1/horarios", json=test_horario_data)
-    horario_id = create_response.json()["id"]
+    """Tests deactivating a schedule via the API."""
+    # Create schedule
+    create_response = client.post("/api/v1/schedules", json=test_horario_data)
+    schedule_id = create_response.json()["id"]
     
-    # Desactivar horario
-    response = client.put(f"/api/v1/horarios/{horario_id}/desactivar")
+    # Deactivate schedule
+    response = client.put(f"/api/v1/schedules/{schedule_id}/deactivate")
     assert response.status_code == 200
-    data = response.json()
+    response_data = response.json()
     
-    assert data["estado"] == EstadoHorario.INACTIVO
+    assert response_data["state"] == ScheduleState.INACTIVE
 
 def test_activate_horario(client: TestClient, test_horario_data):
-    """Prueba la activación de un horario a través de la API"""
-    # Crear horario
-    create_response = client.post("/api/v1/horarios", json=test_horario_data)
-    horario_id = create_response.json()["id"]
+    """Tests activating a schedule via the API."""
+    # Create schedule
+    create_response = client.post("/api/v1/schedules", json=test_horario_data)
+    schedule_id = create_response.json()["id"]
     
-    # Desactivar horario
-    client.put(f"/api/v1/horarios/{horario_id}/desactivar")
+    # Deactivate schedule
+    client.put(f"/api/v1/schedules/{schedule_id}/deactivate")
     
-    # Activar horario
-    response = client.put(f"/api/v1/horarios/{horario_id}/activar")
+    # Activate schedule
+    response = client.put(f"/api/v1/schedules/{schedule_id}/activate")
     assert response.status_code == 200
-    data = response.json()
+    response_data = response.json()
     
-    assert data["estado"] == EstadoHorario.ACTIVO
+    assert response_data["state"] == ScheduleState.ACTIVE
 
 def test_get_horarios(client: TestClient, test_horario_data):
-    """Prueba la obtención de la lista de horarios a través de la API"""
-    # Crear varios horarios
+    """Tests retrieving the list of schedules via the API."""
+    # Create multiple schedules
     for i in range(3):
-        horario_data = test_horario_data.copy()
-        horario_data["dia_semana"] = i + 1
-        client.post("/api/v1/horarios", json=horario_data)
+        schedule_data = test_horario_data.copy()
+        schedule_data["day_of_week"] = i + 1
+        client.post("/api/v1/schedules", json=schedule_data)
     
-    # Obtener lista de horarios
-    response = client.get("/api/v1/horarios")
+    # Get list of schedules
+    response = client.get("/api/v1/schedules")
     assert response.status_code == 200
-    data = response.json()
+    response_data = response.json()
     
-    assert len(data) >= 3
-    assert all("id" in horario for horario in data)
-    assert all("dia_semana" in horario for horario in data)
-    assert all("hora_inicio" in horario for horario in data)
-    assert all("hora_fin" in horario for horario in data)
-    assert all("estado" in horario for horario in data)
+    assert len(response_data) >= 3
+    assert all("id" in schedule for schedule in response_data)
+    assert all("day_of_week" in schedule for schedule in response_data)
+    assert all("start_time" in schedule for schedule in response_data)
+    assert all("end_time" in schedule for schedule in response_data)
+    assert all("state" in schedule for schedule in response_data)
 
 def test_get_horarios_por_dia(client: TestClient, test_horario_data):
-    """Prueba la obtención de horarios por día de la semana a través de la API"""
-    # Crear horarios para diferentes días
-    for dia in range(1, 4):
-        horario_data = test_horario_data.copy()
-        horario_data["dia_semana"] = dia
-        client.post("/api/v1/horarios", json=horario_data)
+    """Tests retrieving schedules by day of the week via the API."""
+    # Create schedules for different days
+    for day in range(1, 4):
+        schedule_data = test_horario_data.copy()
+        schedule_data["day_of_week"] = day
+        client.post("/api/v1/schedules", json=schedule_data)
     
-    # Obtener horarios para un día específico
-    dia_semana = 1
-    response = client.get(f"/api/v1/horarios/dia/{dia_semana}")
+    # Get schedules for a specific day
+    day_of_week = 1
+    response = client.get(f"/api/v1/schedules/day/{day_of_week}")
     assert response.status_code == 200
-    data = response.json()
+    response_data = response.json()
     
-    assert all(horario["dia_semana"] == dia_semana for horario in data)
-    assert all("id" in horario for horario in data)
-    assert all("hora_inicio" in horario for horario in data)
-    assert all("hora_fin" in horario for horario in data)
-    assert all("estado" in horario for horario in data) 
+    assert all(schedule["day_of_week"] == day_of_week for schedule in response_data)
+    assert all("id" in schedule for schedule in response_data)
+    assert all("start_time" in schedule for schedule in response_data)
+    assert all("end_time" in schedule for schedule in response_data)
+    assert all("state" in schedule for schedule in response_data)

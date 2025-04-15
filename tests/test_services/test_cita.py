@@ -1,5 +1,5 @@
 """
-Pruebas unitarias para el servicio de citas
+Unit tests for the appointment service
 """
 import pytest
 from datetime import datetime, timedelta
@@ -12,128 +12,128 @@ from app.models.cita import EstadoCita
 
 @pytest.mark.asyncio
 async def test_create_cita(db_session: AsyncSession, test_user_data, test_cita_data):
-    """Prueba la creación de una cita"""
-    # Crear cliente primero
-    cliente_in = ClienteCreate(**test_user_data)
-    cliente = await ClienteService.create(db_session, cliente_in)
-    
-    # Crear cita
-    cita_in = CitaCreate(**test_cita_data)
-    cita = await CitaService.create(db_session, cita_in)
-    
-    assert cita.id is not None
-    assert cita.cliente_id == cliente.id
-    assert cita.estado == EstadoCita.PENDIENTE
-    assert cita.servicio == test_cita_data["servicio"]
-    assert cita.duracion_minutos == test_cita_data["duracion_minutos"]
+    """Tests the creation of an appointment"""
+    # Create client first
+    client_in = ClienteCreate(**test_user_data)
+    client = await ClienteService.create(db_session, client_in)
+
+    # Create appointment
+    appointment_in = CitaCreate(**test_cita_data)
+    appointment = await CitaService.create(db_session, appointment_in)
+
+    assert appointment.id is not None
+    assert appointment.client_id == client.id
+    assert appointment.status == EstadoCita.PENDIENTE
+    assert appointment.service == test_cita_data["service"]
+    assert appointment.duration_minutes == test_cita_data["duration_minutes"]
 
 @pytest.mark.asyncio
 async def test_get_cita_by_id(db_session: AsyncSession, test_user_data, test_cita_data):
-    """Prueba la obtención de una cita por ID"""
-    # Crear cliente y cita
-    cliente_in = ClienteCreate(**test_user_data)
-    cliente = await ClienteService.create(db_session, cliente_in)
-    
-    cita_in = CitaCreate(**test_cita_data)
-    cita = await CitaService.create(db_session, cita_in)
-    
-    # Obtener cita
-    cita_db = await CitaService.get_by_id(db_session, cita.id)
-    
-    assert cita_db is not None
-    assert cita_db.id == cita.id
-    assert cita_db.cliente_id == cita.cliente_id
+    """Tests getting an appointment by ID"""
+    # Create client and appointment
+    client_in = ClienteCreate(**test_user_data)
+    client = await ClienteService.create(db_session, client_in)
+
+    appointment_in = CitaCreate(**test_cita_data)
+    appointment = await CitaService.create(db_session, appointment_in)
+
+    # Get appointment
+    appointment_db = await CitaService.get_by_id(db_session, appointment.id)
+
+    assert appointment_db is not None
+    assert appointment_db.id == appointment.id
+    assert appointment_db.client_id == appointment.client_id
 
 @pytest.mark.asyncio
 async def test_update_cita(db_session: AsyncSession, test_user_data, test_cita_data):
-    """Prueba la actualización de una cita"""
-    # Crear cliente y cita
-    cliente_in = ClienteCreate(**test_user_data)
-    cliente = await ClienteService.create(db_session, cliente_in)
-    
-    cita_in = CitaCreate(**test_cita_data)
-    cita = await CitaService.create(db_session, cita_in)
-    
-    # Actualizar cita
-    update_data = {"estado": EstadoCita.CONFIRMADA}
-    cita_update = CitaUpdate(**update_data)
-    cita_updated = await CitaService.update(db_session, cita, cita_update)
-    
-    assert cita_updated.estado == EstadoCita.CONFIRMADA
-    assert cita_updated.cliente_id == cita.cliente_id
+    """Tests updating an appointment"""
+    # Create client and appointment
+    client_in = ClienteCreate(**test_user_data)
+    client = await ClienteService.create(db_session, client_in)
+
+    appointment_in = CitaCreate(**test_cita_data)
+    appointment = await CitaService.create(db_session, appointment_in)
+
+    # Update appointment
+    update_data = {"status": EstadoCita.CONFIRMADA}
+    appointment_update = CitaUpdate(**update_data)
+    appointment_updated = await CitaService.update(db_session, appointment, appointment_update)
+
+    assert appointment_updated.status == EstadoCita.CONFIRMADA
+    assert appointment_updated.client_id == appointment.client_id
 
 @pytest.mark.asyncio
 async def test_cancel_cita(db_session: AsyncSession, test_user_data, test_cita_data):
-    """Prueba la cancelación de una cita"""
-    # Crear cliente y cita
-    cliente_in = ClienteCreate(**test_user_data)
-    cliente = await ClienteService.create(db_session, cliente_in)
-    
-    cita_in = CitaCreate(**test_cita_data)
-    cita = await CitaService.create(db_session, cita_in)
-    
-    # Cancelar cita
-    cita_canceled = await CitaService.cancel(db_session, cita)
-    
-    assert cita_canceled.estado == EstadoCita.CANCELADA
-    assert cita_canceled.cliente_id == cita.cliente_id
+    """Tests canceling an appointment"""
+    # Create client and appointment
+    client_in = ClienteCreate(**test_user_data)
+    client = await ClienteService.create(db_session, client_in)
+
+    appointment_in = CitaCreate(**test_cita_data)
+    appointment = await CitaService.create(db_session, appointment_in)
+
+    # Cancel appointment
+    appointment_canceled = await CitaService.cancel(db_session, appointment)
+
+    assert appointment_canceled.status == EstadoCita.CANCELADA
+    assert appointment_canceled.client_id == appointment.client_id
 
 @pytest.mark.asyncio
 async def test_complete_cita(db_session: AsyncSession, test_user_data, test_cita_data):
-    """Prueba la finalización de una cita"""
-    # Crear cliente y cita
-    cliente_in = ClienteCreate(**test_user_data)
-    cliente = await ClienteService.create(db_session, cliente_in)
-    
-    cita_in = CitaCreate(**test_cita_data)
-    cita = await CitaService.create(db_session, cita_in)
-    
-    # Confirmar cita primero
-    await CitaService.confirm(db_session, cita)
-    
-    # Completar cita
-    cita_completed = await CitaService.complete(db_session, cita)
-    
-    assert cita_completed.estado == EstadoCita.COMPLETADA
-    assert cita_completed.cliente_id == cita.cliente_id
+    """Tests completing an appointment"""
+    # Create client and appointment
+    client_in = ClienteCreate(**test_user_data)
+    client = await ClienteService.create(db_session, client_in)
+
+    appointment_in = CitaCreate(**test_cita_data)
+    appointment = await CitaService.create(db_session, appointment_in)
+
+    # Confirm appointment first
+    await CitaService.confirm(db_session, appointment)
+
+    # Complete appointment
+    appointment_completed = await CitaService.complete(db_session, appointment)
+
+    assert appointment_completed.status == EstadoCita.COMPLETADA
+    assert appointment_completed.client_id == appointment.client_id
 
 @pytest.mark.asyncio
 async def test_no_show_cita(db_session: AsyncSession, test_user_data, test_cita_data):
-    """Prueba el registro de no asistencia a una cita"""
-    # Crear cliente y cita
-    cliente_in = ClienteCreate(**test_user_data)
-    cliente = await ClienteService.create(db_session, cliente_in)
-    
-    cita_in = CitaCreate(**test_cita_data)
-    cita = await CitaService.create(db_session, cita_in)
-    
-    # Confirmar cita primero
-    await CitaService.confirm(db_session, cita)
-    
-    # Registrar no asistencia
-    cita_no_show = await CitaService.no_show(db_session, cita)
-    
-    assert cita_no_show.estado == EstadoCita.NO_ASISTIO
-    assert cita_no_show.cliente_id == cita.cliente_id
+    """Tests registering a no-show for an appointment"""
+    # Create client and appointment
+    client_in = ClienteCreate(**test_user_data)
+    client = await ClienteService.create(db_session, client_in)
+
+    appointment_in = CitaCreate(**test_cita_data)
+    appointment = await CitaService.create(db_session, appointment_in)
+
+    # Confirm appointment first
+    await CitaService.confirm(db_session, appointment)
+
+    # Register no-show
+    appointment_no_show = await CitaService.no_show(db_session, appointment)
+
+    assert appointment_no_show.status == EstadoCita.NO_ASISTIO
+    assert appointment_no_show.client_id == appointment.client_id
 
 @pytest.mark.asyncio
 async def test_check_availability(db_session: AsyncSession, test_user_data, test_cita_data):
-    """Prueba la verificación de disponibilidad"""
-    # Crear cliente y cita
-    cliente_in = ClienteCreate(**test_user_data)
-    cliente = await ClienteService.create(db_session, cliente_in)
-    
-    cita_in = CitaCreate(**test_cita_data)
-    cita = await CitaService.create(db_session, cita_in)
-    
-    # Verificar disponibilidad
-    fecha_hora = datetime.fromisoformat(test_cita_data["fecha_hora"])
-    is_available = await CitaService.check_availability(db_session, fecha_hora)
-    
-    assert is_available is False  # No disponible porque ya hay una cita en ese horario
-    
-    # Verificar disponibilidad en otro horario
-    fecha_hora_available = fecha_hora + timedelta(hours=2)
-    is_available = await CitaService.check_availability(db_session, fecha_hora_available)
-    
-    assert is_available is True  # Disponible porque no hay citas en ese horario 
+    """Tests checking availability"""
+    # Create client and appointment
+    client_in = ClienteCreate(**test_user_data)
+    client = await ClienteService.create(db_session, client_in)
+
+    appointment_in = CitaCreate(**test_cita_data)
+    appointment = await CitaService.create(db_session, appointment_in)
+
+    # Check availability
+    date_time = datetime.fromisoformat(test_cita_data["date_time"])
+    is_available = await CitaService.check_availability(db_session, date_time)
+
+    assert is_available is False  # Not available because there is already an appointment at that time
+
+    # Check availability at another time
+    date_time_available = date_time + timedelta(hours=2)
+    is_available = await CitaService.check_availability(db_session, date_time_available)
+
+    assert is_available is True  # Available because there are no appointments at that time

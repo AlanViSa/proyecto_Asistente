@@ -1,27 +1,27 @@
 #!/bin/bash
 
-# Verificar si se proporcionó el dominio
+# Check if the domain was provided
 if [ -z "$1" ]; then
-    echo "Uso: $0 <dominio>"
-    echo "Ejemplo: $0 ejemplo.com"
+    echo "Usage: $0 <domain>"
+    echo "Example: $0 example.com"
     exit 1
 fi
 
 DOMAIN=$1
-EMAIL="tu-email@ejemplo.com"  # Cambiar por tu email
+EMAIL="your-email@example.com"  # Change to your email
 
-# Crear directorio para certificados
+# Create directory for certificates
 mkdir -p /etc/nginx/ssl/live/$DOMAIN
 
-# Instalar certbot si no está instalado
+# Install certbot if not installed
 if ! command -v certbot &> /dev/null; then
-    echo "Instalando certbot..."
+    echo "Installing certbot..."
     apt-get update
     apt-get install -y certbot python3-certbot-nginx
 fi
 
-# Obtener certificado
-echo "Obteniendo certificado SSL para $DOMAIN..."
+# Get certificate
+echo "Obtaining SSL certificate for $DOMAIN..."
 certbot certonly --nginx \
     --non-interactive \
     --agree-tos \
@@ -29,9 +29,9 @@ certbot certonly --nginx \
     --domain $DOMAIN \
     --redirect
 
-# Verificar la renovación automática
-echo "Configurando renovación automática..."
+# Verify automatic renewal
+echo "Configuring automatic renewal..."
 certbot renew --dry-run
 
-echo "Configuración SSL completada para $DOMAIN"
-echo "Asegúrate de actualizar la configuración de Nginx con las rutas correctas de los certificados" 
+echo "SSL configuration completed for $DOMAIN"
+echo "Make sure to update the Nginx configuration with the correct certificate paths"

@@ -18,23 +18,23 @@ async def create_cita(
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ):
-    # Verificar que el cliente existe
-    cliente = db.query(ClienteModel).filter(ClienteModel.id == cita.cliente_id).first()
+    # Verify that the client exists
+    client = db.query(ClienteModel).filter(ClienteModel.id == cita.client_id).first()
     if not cliente:
         raise HTTPException(
             status_code=404,
-            detail="Cliente no encontrado"
+            detail="Client not found"
         )
 
-    # Verificar si ya existe una cita en el mismo horario
-    fecha_fin = cita.fecha_hora + timedelta(minutes=cita.duracion_minutos)
+    # Verify if an appointment already exists at the same time
+    end_time = cita.date_time + timedelta(minutes=cita.duration_minutes)
     
-    # Buscar citas que se solapan
-    citas_existentes = db.query(CitaModel).filter(
+    # Find overlapping appointments
+    existing_appointments = db.query(CitaModel).filter(
         and_(
-            CitaModel.estado != EstadoCita.CANCELADA,
-            CitaModel.fecha_hora < fecha_fin,
-            CitaModel.fecha_hora + timedelta(minutes=30) > cita.fecha_hora
+            CitaModel.status != EstadoCita.CANCELADA,
+            CitaModel.date_time < end_time,
+            CitaModel.date_time + timedelta(minutes=30) > cita.date_time
         )
     ).all()
     
@@ -42,17 +42,17 @@ async def create_cita(
         raise HTTPException(
             status_code=400,
             detail="Ya existe una cita programada para este horario"
-        )
+        )# Already exists an appointment scheduled for this time
     
-    # Crear la cita
-    db_cita = CitaModel(
-        cliente_id=cita.cliente_id,
-        fecha_hora=cita.fecha_hora,
-        duracion_minutos=cita.duracion_minutos,
-        servicio=cita.servicio,
-        notas=cita.notas,
-        estado=EstadoCita.PENDIENTE,
-        recordatorio_enviado=False
+    # Create the appointment
+    db_appointment = CitaModel(
+        client_id=cita.client_id,
+        date_time=cita.date_time,
+        duration_minutes=cita.duration_minutes,
+        service=cita.service,
+        notes=cita.notes,
+        status=EstadoCita.PENDIENTE,
+        reminder_sent=False
     )
     db.add(db_cita)
     try:
@@ -61,11 +61,11 @@ async def create_cita(
         
         # Enviar confirmación de cita en segundo plano
         try:
-            background_tasks.add_task(
-                notification_service.send_confirmation_message,
-                db_cita,
-                cliente_id=cliente.id,
-                telefono=cliente.telefono
+            background_tasks.add_task( # Send appointment confirmation in the background
+                notification_service.send_confirmation_message, 
+                db_appointment,
+                client_id=client.id,
+                phone=client.phone
             )
         except Exception as e:
             # Log the error but don't fail the request
@@ -76,38 +76,38 @@ async def create_cita(
         db.rollback()
         raise HTTPException(
             status_code=400,
-            detail=f"No se pudo crear la cita: {str(e)}"
+            detail=f"Could not create the appointment: {str(e)}"
         )
 
 @router.get("/", response_model=List[Cita])
-def read_citas(
+def read_appointments(
     skip: int = 0, 
     limit: int = 100, 
-    fecha_inicio: datetime = None,
-    fecha_fin: datetime = None,
+    start_date: datetime = None,
+    end_date: datetime = None,
     db: Session = Depends(get_db)
 ):
     query = db.query(CitaModel)
     
-    if fecha_inicio:
-        query = query.filter(CitaModel.fecha_hora >= fecha_inicio)
-    if fecha_fin:
-        query = query.filter(CitaModel.fecha_hora <= fecha_fin)
+    if start_date:
+        query = query.filter(CitaModel.date_time >= start_date)
+    if end_date:
+        query = query.filter(CitaModel.date_time <= end_date)
         
-    citas = query.order_by(CitaModel.fecha_hora).offset(skip).limit(limit).all()
-    return citas
+    appointments = query.order_by(CitaModel.date_time).offset(skip).limit(limit).all()
+    return appointments
 
-@router.get("/{cita_id}", response_model=Cita)
-def read_cita(cita_id: int, db: Session = Depends(get_db)):
-    cita = db.query(CitaModel).filter(CitaModel.id == cita_id).first()
-    if cita is None:
-        raise HTTPException(status_code=404, detail="Cita no encontrada")
-    return cita
+@router.get("/{appointment_id}", response_model=Cita)
+def read_appointment(appointment_id: int, db: Session = Depends(get_db)):
+    appointment = db.query(CitaModel).filter(CitaModel.id == appointment_id).first()
+    if appointment is None:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+    return appointment
 
-@router.put("/{cita_id}", response_model=Cita)
-async def update_cita(
-    cita_id: int, 
-    cita_update: CitaUpdate,
+@router.put("/{appointment_id}", response_model=Cita)
+async def update_appointment(
+    appointment_id: int, 
+    appointment_update: CitaUpdate,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ):
@@ -115,22 +115,22 @@ async def update_cita(
     if db_cita is None:
         raise HTTPException(status_code=404, detail="Cita no encontrada")
     
-    update_data = cita_update.model_dump(exclude_unset=True)
+    update_data = appointment_update.model_dump(exclude_unset=True)
     
-    # Si se está actualizando la fecha/hora, verificar disponibilidad
-    if "fecha_hora" in update_data or "duracion_minutos" in update_data:
-        nueva_fecha = update_data.get("fecha_hora", db_cita.fecha_hora)
-        nueva_duracion = update_data.get("duracion_minutos", db_cita.duracion_minutos)
-        fecha_fin = nueva_fecha + timedelta(minutes=nueva_duracion)
+    # If date/time is being updated, verify availability
+    if "date_time" in update_data or "duration_minutes" in update_data:
+        new_date = update_data.get("date_time", db_appointment.date_time)
+        new_duration = update_data.get("duration_minutes", db_appointment.duration_minutes)
+        end_time = new_date + timedelta(minutes=new_duration)
         
-        cita_existente = db.query(CitaModel).filter(
-            CitaModel.id != cita_id,
-            CitaModel.fecha_hora < fecha_fin,
-            CitaModel.fecha_hora + timedelta(minutes=CitaModel.duracion_minutos) > nueva_fecha,
-            CitaModel.estado != EstadoCita.CANCELADA
+        existing_appointment = db.query(CitaModel).filter(
+            CitaModel.id != appointment_id,
+            CitaModel.date_time < end_time,
+            CitaModel.date_time + timedelta(minutes=CitaModel.duration_minutes) > new_date,
+            CitaModel.status != EstadoCita.CANCELADA
         ).first()
         
-        if cita_existente:
+        if existing_appointment:
             raise HTTPException(
                 status_code=400,
                 detail="Ya existe una cita programada para este horario"
@@ -138,13 +138,13 @@ async def update_cita(
     
     # Si se está actualizando el estado a CONFIRMADA, enviar confirmación
     if "estado" in update_data and update_data["estado"] == EstadoCita.CONFIRMADA:
-        background_tasks.add_task(
+        background_tasks.add_task( # If the status is being updated to CONFIRMED, send confirmation
             notification_service.send_appointment_confirmation,
             db_cita
         )
     
     for field, value in update_data.items():
-        setattr(db_cita, field, value)
+        setattr(db_appointment, field, value)
     
     try:
         db.commit()
@@ -155,15 +155,15 @@ async def update_cita(
             status_code=400,
             detail="No se pudo actualizar la cita"
         )
-    return db_cita
+    return db_appointment
 
-@router.delete("/{cita_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_cita(
-    cita_id: int,
+@router.delete("/{appointment_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_appointment(
+    appointment_id: int,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ):
-    db_cita = db.query(CitaModel).filter(CitaModel.id == cita_id).first()
+    db_cita = db.query(CitaModel).filter(CitaModel.id == appointment_id).first()
     if db_cita is None:
         raise HTTPException(status_code=404, detail="Cita no encontrada")
     
@@ -178,27 +178,27 @@ async def delete_cita(
         message
     )
     
-    db_cita.estado = EstadoCita.CANCELADA
+    db_cita.status = EstadoCita.CANCELADA
     db.commit()
     return None
 
-@router.patch("/{cita_id}", response_model=CitaResponse)
-async def patch_cita(
-    cita_id: int,
-    cita_update: CitaUpdate,
+@router.patch("/{appointment_id}", response_model=CitaResponse)
+async def patch_appointment(
+    appointment_id: int,
+    appointment_update: CitaUpdate,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ) -> CitaModel:
     """
     Actualiza una cita existente.
-    """
+    """ # Updates an existing appointment
     try:
-        # Obtener la cita con el cliente precargado
-        cita = db.query(CitaModel).join(CitaModel.cliente).filter(CitaModel.id == cita_id).first()
-        if not cita:
+        # Get the appointment with the client preloaded
+        appointment = db.query(CitaModel).join(CitaModel.client).filter(CitaModel.id == appointment_id).first()
+        if not appointment:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"No se encontró la cita con ID {cita_id}"
+                detail=f"Appointment with ID {appointment_id} not found"
             )
 
         # Actualizar solo los campos proporcionados
@@ -206,17 +206,17 @@ async def patch_cita(
         for field, value in update_data.items():
             setattr(cita, field, value)
 
-        # Si se está confirmando la cita, enviar mensaje de confirmación
-        if cita_update.estado == EstadoCita.CONFIRMADA:
+        # If the appointment is being confirmed, send confirmation message
+        if appointment_update.status == EstadoCita.CONFIRMADA:
             try:
-                await notification_service.send_confirmation_message(cita, db)
+                await notification_service.send_confirmation_message(appointment, db)
             except Exception as e:
                 print(f"Error al enviar mensaje de confirmación: {str(e)}")
-                # No fallamos la actualización si el mensaje falla
+                # We don't fail the update if the message fails
 
         db.commit()
-        db.refresh(cita)
-        return cita
+        db.refresh(appointment)
+        return appointment
 
     except Exception as e:
         db.rollback()

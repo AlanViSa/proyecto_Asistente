@@ -1,104 +1,104 @@
 """
-Pruebas unitarias para el servicio de clientes
+Unit tests for the client service
 """
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.services.cliente import ClienteService
-from app.schemas.cliente import ClienteCreate, ClienteUpdate
-from app.models.cliente import Cliente
+from app.services.cliente import ClientService
+from app.schemas.cliente import ClientCreate, ClientUpdate
+from app.models.cliente import Client
 
 @pytest.mark.asyncio
-async def test_create_cliente(db_session: AsyncSession, test_user_data):
-    """Prueba la creación de un cliente"""
-    cliente_in = ClienteCreate(**test_user_data)
-    cliente = await ClienteService.create(db_session, cliente_in)
+async def test_create_client(db_session: AsyncSession, test_user_data):
+    """Tests the creation of a client"""
+    client_in = ClientCreate(**test_user_data)
+    client = await ClientService.create(db_session, client_in)
     
-    assert cliente.id is not None
-    assert cliente.email == test_user_data["email"]
-    assert cliente.nombre == test_user_data["nombre"]
-    assert cliente.telefono == test_user_data["telefono"]
-    assert cliente.activo is True
+    assert client.id is not None
+    assert client.email == test_user_data["email"]
+    assert client.name == test_user_data["name"]
+    assert client.phone == test_user_data["phone"]
+    assert client.active is True
 
 @pytest.mark.asyncio
-async def test_get_cliente_by_id(db_session: AsyncSession, test_user_data):
-    """Prueba la obtención de un cliente por ID"""
-    # Crear cliente
-    cliente_in = ClienteCreate(**test_user_data)
-    cliente = await ClienteService.create(db_session, cliente_in)
+async def test_get_client_by_id(db_session: AsyncSession, test_user_data):
+    """Tests getting a client by ID"""
+    # Create client
+    client_in = ClientCreate(**test_user_data)
+    client = await ClientService.create(db_session, client_in)
     
-    # Obtener cliente
-    cliente_db = await ClienteService.get_by_id(db_session, cliente.id)
+    # Get client
+    client_db = await ClientService.get_by_id(db_session, client.id)
     
-    assert cliente_db is not None
-    assert cliente_db.id == cliente.id
-    assert cliente_db.email == cliente.email
+    assert client_db is not None
+    assert client_db.id == client.id
+    assert client_db.email == client.email
 
 @pytest.mark.asyncio
-async def test_get_cliente_by_email(db_session: AsyncSession, test_user_data):
-    """Prueba la obtención de un cliente por email"""
-    # Crear cliente
-    cliente_in = ClienteCreate(**test_user_data)
-    cliente = await ClienteService.create(db_session, cliente_in)
+async def test_get_client_by_email(db_session: AsyncSession, test_user_data):
+    """Tests getting a client by email"""
+    # Create client
+    client_in = ClientCreate(**test_user_data)
+    client = await ClientService.create(db_session, client_in)
     
-    # Obtener cliente
-    cliente_db = await ClienteService.get_by_email(db_session, cliente.email)
+    # Get client
+    client_db = await ClientService.get_by_email(db_session, client.email)
     
-    assert cliente_db is not None
-    assert cliente_db.id == cliente.id
-    assert cliente_db.email == cliente.email
+    assert client_db is not None
+    assert client_db.id == client.id
+    assert client_db.email == client.email
 
 @pytest.mark.asyncio
-async def test_update_cliente(db_session: AsyncSession, test_user_data):
-    """Prueba la actualización de un cliente"""
-    # Crear cliente
-    cliente_in = ClienteCreate(**test_user_data)
-    cliente = await ClienteService.create(db_session, cliente_in)
+async def test_update_client(db_session: AsyncSession, test_user_data):
+    """Tests updating a client"""
+    # Create client
+    client_in = ClientCreate(**test_user_data)
+    client = await ClientService.create(db_session, client_in)
     
-    # Actualizar cliente
-    update_data = {"nombre": "Nuevo Nombre"}
-    cliente_update = ClienteUpdate(**update_data)
-    cliente_updated = await ClienteService.update(db_session, cliente, cliente_update)
+    # Update client
+    update_data = {"name": "New Name"}
+    client_update = ClientUpdate(**update_data)
+    client_updated = await ClientService.update(db_session, client, client_update)
     
-    assert cliente_updated.nombre == "Nuevo Nombre"
-    assert cliente_updated.email == cliente.email
+    assert client_updated.name == "New Name"
+    assert client_updated.email == client.email
 
 @pytest.mark.asyncio
-async def test_deactivate_cliente(db_session: AsyncSession, test_user_data):
-    """Prueba la desactivación de un cliente"""
-    # Crear cliente
-    cliente_in = ClienteCreate(**test_user_data)
-    cliente = await ClienteService.create(db_session, cliente_in)
+async def test_deactivate_client(db_session: AsyncSession, test_user_data):
+    """Tests deactivating a client"""
+    # Create client
+    client_in = ClientCreate(**test_user_data)
+    client = await ClientService.create(db_session, client_in)
     
-    # Desactivar cliente
-    cliente_deactivated = await ClienteService.deactivate(db_session, cliente)
+    # Deactivate client
+    client_deactivated = await ClientService.deactivate(db_session, client)
     
-    assert cliente_deactivated.activo is False
+    assert client_deactivated.active is False
 
 @pytest.mark.asyncio
-async def test_activate_cliente(db_session: AsyncSession, test_user_data):
-    """Prueba la activación de un cliente"""
-    # Crear cliente
-    cliente_in = ClienteCreate(**test_user_data)
-    cliente = await ClienteService.create(db_session, cliente_in)
+async def test_activate_client(db_session: AsyncSession, test_user_data):
+    """Tests activating a client"""
+    # Create client
+    client_in = ClientCreate(**test_user_data)
+    client = await ClientService.create(db_session, client_in)
     
-    # Desactivar cliente
-    await ClienteService.deactivate(db_session, cliente)
+    # Deactivate client
+    await ClientService.deactivate(db_session, client)
     
-    # Activar cliente
-    cliente_activated = await ClienteService.activate(db_session, cliente)
+    # Activate client
+    client_activated = await ClientService.activate(db_session, client)
     
-    assert cliente_activated.activo is True
+    assert client_activated.active is True
 
 @pytest.mark.asyncio
-async def test_delete_cliente(db_session: AsyncSession, test_user_data):
-    """Prueba la eliminación de un cliente"""
-    # Crear cliente
-    cliente_in = ClienteCreate(**test_user_data)
-    cliente = await ClienteService.create(db_session, cliente_in)
+async def test_delete_client(db_session: AsyncSession, test_user_data):
+    """Tests deleting a client"""
+    # Create client
+    client_in = ClientCreate(**test_user_data)
+    client = await ClientService.create(db_session, client_in)
     
-    # Eliminar cliente
-    await ClienteService.delete(db_session, cliente)
+    # Delete client
+    await ClientService.delete(db_session, client)
     
-    # Verificar que el cliente fue eliminado
-    cliente_db = await ClienteService.get_by_id(db_session, cliente.id)
-    assert cliente_db is None 
+    # Verify that the client was deleted
+    client_db = await ClientService.get_by_id(db_session, client.id)
+    assert client_db is None

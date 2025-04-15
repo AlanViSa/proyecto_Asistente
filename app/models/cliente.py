@@ -6,14 +6,14 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
 class Cliente(Base):
-    """Modelo para la tabla de clientes"""
+    """Model for the clients table"""
     __tablename__ = "clientes"
-    __table_args__ = {"comment": "Tabla que almacena la información de los clientes"}
+    __table_args__ = {"comment": "Table that stores client information"}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    nombre: Mapped[str] = mapped_column(String(100), nullable=False)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
     email: Mapped[str] = mapped_column(String(100), nullable=False, unique=True, index=True)
-    telefono: Mapped[str] = mapped_column(String(20), nullable=False)
+    phone: Mapped[str] = mapped_column(String(20), nullable=False)
     hashed_password: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     preferencias: Mapped[Optional[str]] = mapped_column(JSON, nullable=True)
     activo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
@@ -30,7 +30,7 @@ class Cliente(Base):
         onupdate=lambda: datetime.now()
     )
     
-    # Relaciones
+    # Relationships
     citas: Mapped[List["Cita"]] = relationship(
         "Cita",
         back_populates="cliente",

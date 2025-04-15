@@ -1,93 +1,78 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
+
 from app.db.database import get_db
-from app.models.cliente import Cliente as ClienteModel
-from app.schemas.cliente import Cliente, ClienteCreate, ClienteUpdate
+from app.models.cliente import Client as ClientModel
+from app.schemas.cliente import Client, ClientCreate, ClientUpdate
 
 router = APIRouter()
 
-@router.post("/", response_model=Cliente, status_code=status.HTTP_201_CREATED)
-def create_cliente(cliente: ClienteCreate, db: Session = Depends(get_db)):
-    # Verificar si ya existe un cliente con el mismo teléfono o email
-    if cliente.email:
-        existing_email = db.query(ClienteModel).filter(ClienteModel.email == cliente.email).first()
+@router.post("/", response_model=Client, status_code=status.HTTP_201_CREATED)
+def create_client(client: ClientCreate, db: Session = Depends(get_db)):
+    # Check if a client with the same phone or email already exists
+    if client.email:
+        existing_email = db.query(ClientModel).filter(ClientModel.email == client.email).first()
         if existing_email:
-            raise HTTPException(
-                status_code=400,
-                detail="Ya existe un cliente con este email."
-            )
-    
-    existing_phone = db.query(ClienteModel).filter(ClienteModel.telefono == cliente.telefono).first()
+            raise HTTPException(status_code=400, detail="A client with this email already exists.")
+
+    existing_phone = db.query(ClientModel).filter(ClientModel.phone == client.phone).first()
     if existing_phone:
-        raise HTTPException(
-            status_code=400,
-            detail="Ya existe un cliente con este teléfono."
-        )
+        raise HTTPException(status_code=400, detail="A client with this phone number already exists.")
 
-    # Crear el cliente
-    db_cliente = ClienteModel(
-        nombre=cliente.nombre,
-        telefono=cliente.telefono,
-        email=cliente.email,
-        preferencias=cliente.preferencias,
-        activo=True
+    # Create the client
+    db_client = ClientModel(
+        name=client.name,
+        phone=client.phone,
+        email=client.email,
+        preferences=client.preferences,
+        is_active=True
     )
-    db.add(db_cliente)
+    db.add(db_client)
     try:
         db.commit()
-        db.refresh(db_cliente)
-    except Exception as e:
+        db.refresh(db_client)
+    except Exception:
         db.rollback()
-        raise HTTPException(
-            status_code=400,
-            detail="No se pudo crear el cliente. Error interno."
-        )
-    return db_cliente
+        raise HTTPException(status_code=400, detail="Could not create the client. Internal error.")
+    return db_client
 
-@router.get("/", response_model=List[Cliente])
-def read_clientes(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    clientes = db.query(ClienteModel).offset(skip).limit(limit).all()
-    return clientes
+@router.get("/", response_model=List[Client])
+def read_clients(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    clients = db.query(ClientModel).offset(skip).limit(limit).all()
+    return clients
 
-@router.get("/{cliente_id}", response_model=Cliente)
-def read_cliente(cliente_id: int, db: Session = Depends(get_db)):
-    cliente = db.query(ClienteModel).filter(ClienteModel.id == cliente_id).first()
-    if cliente is None:
-        raise HTTPException(status_code=404, detail="Cliente no encontrado")
-    return cliente
+@router.get("/{client_id}", response_model=Client)
+def read_client(client_id: int, db: Session = Depends(get_db)):
+    client = db.query(ClientModel).filter(ClientModel.id == client_id).first()
+    if client is None:
+        raise HTTPException(status_code=404, detail="Client not found")
+    return client
 
-@router.put("/{cliente_id}", response_model=Cliente)
-def update_cliente(
-    cliente_id: int, 
-    cliente_update: ClienteUpdate, 
-    db: Session = Depends(get_db)
-):
-    db_cliente = db.query(ClienteModel).filter(ClienteModel.id == cliente_id).first()
-    if db_cliente is None:
-        raise HTTPException(status_code=404, detail="Cliente no encontrado")
-    
-    update_data = cliente_update.model_dump(exclude_unset=True)
+@router.put("/{client_id}", response_model=Client)
+def update_client(client_id: int, client_update: ClientUpdate, db: Session = Depends(get_db)):
+    db_client = db.query(ClientModel).filter(ClientModel.id == client_id).first()
+    if db_client is None:
+        raise HTTPException(status_code=404, detail="Client not found")
+
+    update_data = client_update.model_dump(exclude_unset=True)
     for field, value in update_data.items():
-        setattr(db_cliente, field, value)
-    
+        setattr(db_client, field, value)
+
     try:
         db.commit()
-        db.refresh(db_cliente)
-    except Exception as e:
+        db.refresh(db_client)
+    except Exception:
         db.rollback()
-        raise HTTPException(
-            status_code=400,
-            detail="No se pudo actualizar el cliente. El teléfono o email ya existe."
-        )
-    return db_cliente
+        raise HTTPException(status_code=400, detail="Could not update the client. The phone or email already exists.")
+    return db_client
 
-@router.delete("/{cliente_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_cliente(cliente_id: int, db: Session = Depends(get_db)):
-    db_cliente = db.query(ClienteModel).filter(ClienteModel.id == cliente_id).first()
-    if db_cliente is None:
-        raise HTTPException(status_code=404, detail="Cliente no encontrado")
-    
-    db_cliente.activo = False
+@router.delete("/{client_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_client(client_id: int, db: Session = Depends(get_db)):
+    db_client = db.query(ClientModel).filter(ClientModel.id == client_id).first()
+    if db_client is None:
+        raise HTTPException(status_code=404, detail="Client not found")
+
+    db_client.is_active = False
     db.commit()
-    return None 
+    return None

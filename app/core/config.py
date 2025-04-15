@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     APP_NAME: str = Field(default="Asistente Virtual Salón")
     BUSINESS_NAME: str = Field(default="Beauty Salon")
     BUSINESS_HOURS_START: str = Field(default="09:00")
-    BUSINESS_HOURS_END: str = Field(default="20:00")
+    BUSINESS_HOURS_END: str = Field(default="17:00")
     TIMEZONE: str = Field(default="UTC")
     DEBUG: bool = Field(default=True)
     ENVIRONMENT: str = Field(default="development")
@@ -55,6 +55,9 @@ class Settings(BaseSettings):
     # Logging
     LOG_LEVEL: str = Field(default="INFO")
     LOG_FILE: str = Field(default="./logs/app.log")
+    
+    # Localization
+    LOCALE: str = Field(default="es_CO")
 
     @validator("ENVIRONMENT")
     def validate_environment(cls, v):

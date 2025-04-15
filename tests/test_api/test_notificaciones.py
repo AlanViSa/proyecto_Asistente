@@ -1,193 +1,192 @@
 """
-Pruebas de integración para los endpoints de notificaciones
+Integration tests for the notifications endpoints.
 """
-import pytest
 from fastapi.testclient import TestClient
 from datetime import datetime, timedelta
-from app.models.estado_cita import EstadoCita
+from app.models.appointment_status import AppointmentStatus
 from app.services.notification import NotificationChannel
 
-def test_get_notificaciones_pendientes(client: TestClient, test_user_data, test_cita_data):
-    """Prueba la obtención de notificaciones pendientes a través de la API"""
-    # Crear cliente y cita
-    cliente_response = client.post("/api/v1/clientes", json=test_user_data)
-    cliente_id = cliente_response.json()["id"]
+def test_get_pending_notifications(client: TestClient, test_user_data, test_appointment_data):
+    """Tests retrieving pending notifications through the API."""
+    # Create client and appointment
+    client_response = client.post("/api/v1/clients", json=test_user_data)
+    client_id = client_response.json()["id"]
     
-    # Crear cita para dentro de 24 horas
-    fecha_hora = datetime.now() + timedelta(hours=24)
-    cita_data = test_cita_data.copy()
-    cita_data["cliente_id"] = cliente_id
-    cita_data["fecha_hora"] = fecha_hora.isoformat()
-    cita_data["estado"] = EstadoCita.CONFIRMADA
-    cita_response = client.post("/api/v1/citas", json=cita_data)
-    cita_id = cita_response.json()["id"]
+    # Create appointment for 24 hours from now
+    datetime_value = datetime.now() + timedelta(hours=24)
+    appointment_data = test_appointment_data.copy()
+    appointment_data["client_id"] = client_id
+    appointment_data["date_time"] = datetime_value.isoformat()
+    appointment_data["status"] = AppointmentStatus.CONFIRMED
+    appointment_response = client.post("/api/v1/appointments", json=appointment_data)
+    appointment_id = appointment_response.json()["id"]
     
-    # Obtener notificaciones pendientes
-    response = client.get("/api/v1/notificaciones/pendientes")
+    # Get pending notifications
+    response = client.get("/api/v1/notifications/pending")
     assert response.status_code == 200
     data = response.json()
     
     assert len(data) > 0
-    assert any(notificacion["cita_id"] == cita_id for notificacion in data)
+    assert any(notification["appointment_id"] == appointment_id for notification in data)
     assert all("id" in notificacion for notificacion in data)
-    assert all("cita_id" in notificacion for notificacion in data)
-    assert all("tipo" in notificacion for notificacion in data)
-    assert all("canal" in notificacion for notificacion in data)
-    assert all("estado" in notificacion for notificacion in data)
+    assert all("appointment_id" in notification for notification in data)
+    assert all("type" in notification for notification in data)
+    assert all("channel" in notification for notification in data)
+    assert all("status" in notification for notification in data)
 
-def test_get_notificaciones_cita(client: TestClient, test_user_data, test_cita_data):
-    """Prueba la obtención de notificaciones de una cita a través de la API"""
-    # Crear cliente y cita
-    cliente_response = client.post("/api/v1/clientes", json=test_user_data)
-    cliente_id = cliente_response.json()["id"]
+def test_get_appointment_notifications(client: TestClient, test_user_data, test_appointment_data):
+    """Tests retrieving notifications for an appointment through the API."""
+    # Create client and appointment
+    client_response = client.post("/api/v1/clients", json=test_user_data)
+    client_id = client_response.json()["id"]
     
-    cita_data = test_cita_data.copy()
-    cita_data["cliente_id"] = cliente_id
-    cita_response = client.post("/api/v1/citas", json=cita_data)
-    cita_id = cita_response.json()["id"]
+    appointment_data = test_appointment_data.copy()
+    appointment_data["client_id"] = client_id
+    appointment_response = client.post("/api/v1/appointments", json=appointment_data)
+    appointment_id = appointment_response.json()["id"]
     
-    # Obtener notificaciones de la cita
-    response = client.get(f"/api/v1/citas/{cita_id}/notificaciones")
+    # Get appointment notifications
+    response = client.get(f"/api/v1/appointments/{appointment_id}/notifications")
     assert response.status_code == 200
     data = response.json()
     
-    assert len(data) >= 2  # Debería tener al menos las notificaciones de 24h y 2h
-    assert all(notificacion["cita_id"] == cita_id for notificacion in data)
+    assert len(data) >= 2  # Should have at least the 24h and 2h notifications
+    assert all(notification["appointment_id"] == appointment_id for notification in data)
     assert all("id" in notificacion for notificacion in data)
-    assert all("tipo" in notificacion for notificacion in data)
-    assert all("canal" in notificacion for notificacion in data)
-    assert all("estado" in notificacion for notificacion in data)
+    assert all("type" in notification for notification in data)
+    assert all("channel" in notification for notification in data)
+    assert all("status" in notification for notification in data)
 
-def test_get_notificaciones_cita_not_found(client: TestClient):
-    """Prueba la obtención de notificaciones de una cita que no existe"""
-    response = client.get("/api/v1/citas/999/notificaciones")
+def test_get_appointment_notifications_not_found(client: TestClient):
+    """Tests retrieving notifications for an appointment that does not exist."""
+    response = client.get("/api/v1/appointments/999/notifications")
     assert response.status_code == 404
 
-def test_marcar_notificacion_enviada(client: TestClient, test_user_data, test_cita_data):
-    """Prueba el marcado de una notificación como enviada a través de la API"""
-    # Crear cliente y cita
-    cliente_response = client.post("/api/v1/clientes", json=test_user_data)
-    cliente_id = cliente_response.json()["id"]
+def test_mark_notification_sent(client: TestClient, test_user_data, test_appointment_data):
+    """Tests marking a notification as sent through the API."""
+    # Create client and appointment
+    client_response = client.post("/api/v1/clients", json=test_user_data)
+    client_id = client_response.json()["id"]
     
-    cita_data = test_cita_data.copy()
-    cita_data["cliente_id"] = cliente_id
-    cita_response = client.post("/api/v1/citas", json=cita_data)
-    cita_id = cita_response.json()["id"]
+    appointment_data = test_appointment_data.copy()
+    appointment_data["client_id"] = client_id
+    appointment_response = client.post("/api/v1/appointments", json=appointment_data)
+    appointment_id = appointment_response.json()["id"]
     
-    # Obtener notificaciones de la cita
-    notificaciones_response = client.get(f"/api/v1/citas/{cita_id}/notificaciones")
-    notificaciones = notificaciones_response.json()
+    # Get appointment notifications
+    notifications_response = client.get(f"/api/v1/appointments/{appointment_id}/notifications")
+    notifications = notifications_response.json()
     
-    # Marcar la primera notificación como enviada
-    notificacion_id = notificaciones[0]["id"]
-    response = client.put(f"/api/v1/notificaciones/{notificacion_id}/enviada")
+    # Mark the first notification as sent
+    notification_id = notifications[0]["id"]
+    response = client.put(f"/api/v1/notifications/{notification_id}/sent")
     assert response.status_code == 200
     data = response.json()
     
-    assert data["estado"] == "ENVIADA"
-    assert data["fecha_envio"] is not None
+    assert data["status"] == "SENT"
+    assert data["sent_date"] is not None
 
-def test_marcar_notificacion_enviada_not_found(client: TestClient):
-    """Prueba el marcado de una notificación que no existe como enviada"""
-    response = client.put("/api/v1/notificaciones/999/enviada")
+def test_mark_notification_sent_not_found(client: TestClient):
+    """Tests marking a notification that does not exist as sent."""
+    response = client.put("/api/v1/notifications/999/sent")
     assert response.status_code == 404
 
-def test_marcar_notificacion_fallida(client: TestClient, test_user_data, test_cita_data):
-    """Prueba el marcado de una notificación como fallida a través de la API"""
-    # Crear cliente y cita
-    cliente_response = client.post("/api/v1/clientes", json=test_user_data)
-    cliente_id = cliente_response.json()["id"]
+def test_mark_notification_failed(client: TestClient, test_user_data, test_appointment_data):
+    """Tests marking a notification as failed through the API."""
+    # Create client and appointment
+    client_response = client.post("/api/v1/clients", json=test_user_data)
+    client_id = client_response.json()["id"]
     
-    cita_data = test_cita_data.copy()
-    cita_data["cliente_id"] = cliente_id
-    cita_response = client.post("/api/v1/citas", json=cita_data)
-    cita_id = cita_response.json()["id"]
+    appointment_data = test_appointment_data.copy()
+    appointment_data["client_id"] = client_id
+    appointment_response = client.post("/api/v1/appointments", json=appointment_data)
+    appointment_id = appointment_response.json()["id"]
     
-    # Obtener notificaciones de la cita
-    notificaciones_response = client.get(f"/api/v1/citas/{cita_id}/notificaciones")
-    notificaciones = notificaciones_response.json()
+    # Get appointment notifications
+    notifications_response = client.get(f"/api/v1/appointments/{appointment_id}/notifications")
+    notifications = notifications_response.json()
     
-    # Marcar la primera notificación como fallida
-    notificacion_id = notificaciones[0]["id"]
-    error_message = "Error de conexión"
+    # Mark the first notification as failed
+    notification_id = notifications[0]["id"]
+    error_message = "Connection error"
     response = client.put(
-        f"/api/v1/notificaciones/{notificacion_id}/fallida",
+        f"/api/v1/notifications/{notification_id}/failed",
         json={"error": error_message}
     )
     assert response.status_code == 200
     data = response.json()
     
-    assert data["estado"] == "FALLIDA"
+    assert data["status"] == "FAILED"
     assert data["error"] == error_message
-    assert data["fecha_intento"] is not None
+    assert data["attempt_date"] is not None
 
-def test_marcar_notificacion_fallida_not_found(client: TestClient):
-    """Prueba el marcado de una notificación que no existe como fallida"""
+def test_mark_notification_failed_not_found(client: TestClient):
+    """Tests marking a notification that does not exist as failed."""
     response = client.put(
-        "/api/v1/notificaciones/999/fallida",
-        json={"error": "Error de prueba"}
+        "/api/v1/notifications/999/failed",
+        json={"error": "Test error"}
     )
     assert response.status_code == 404
 
-def test_get_estadisticas_notificaciones(client: TestClient, test_user_data, test_cita_data):
-    """Prueba la obtención de estadísticas de notificaciones a través de la API"""
-    # Crear cliente y cita
-    cliente_response = client.post("/api/v1/clientes", json=test_user_data)
-    cliente_id = cliente_response.json()["id"]
+def test_get_notification_statistics(client: TestClient, test_user_data, test_appointment_data):
+    """Tests retrieving notification statistics through the API."""
+    # Create client and appointment
+    client_response = client.post("/api/v1/clients", json=test_user_data)
+    client_id = client_response.json()["id"]
     
-    cita_data = test_cita_data.copy()
-    cita_data["cliente_id"] = cliente_id
-    cita_response = client.post("/api/v1/citas", json=cita_data)
-    cita_id = cita_response.json()["id"]
+    appointment_data = test_appointment_data.copy()
+    appointment_data["client_id"] = client_id
+    appointment_response = client.post("/api/v1/appointments", json=appointment_data)
+    appointment_id = appointment_response.json()["id"]
     
-    # Obtener notificaciones de la cita
-    notificaciones_response = client.get(f"/api/v1/citas/{cita_id}/notificaciones")
-    notificaciones = notificaciones_response.json()
+    # Get appointment notifications
+    notifications_response = client.get(f"/api/v1/appointments/{appointment_id}/notifications")
+    notifications = notifications_response.json()
     
-    # Marcar algunas notificaciones como enviadas y fallidas
-    for i, notificacion in enumerate(notificaciones[:2]):
+    # Mark some notifications as sent and failed
+    for i, notification in enumerate(notifications[:2]):
         if i == 0:
-            client.put(f"/api/v1/notificaciones/{notificacion['id']}/enviada")
+            client.put(f"/api/v1/notifications/{notification['id']}/sent")
         else:
             client.put(
-                f"/api/v1/notificaciones/{notificacion['id']}/fallida",
-                json={"error": "Error de prueba"}
+                f"/api/v1/notifications/{notification['id']}/failed",
+                json={"error": "Test error"}
             )
     
-    # Obtener estadísticas
-    inicio = (datetime.now() - timedelta(hours=1)).isoformat()
-    fin = (datetime.now() + timedelta(hours=1)).isoformat()
-    response = client.get(f"/api/v1/notificaciones/estadisticas?inicio={inicio}&fin={fin}")
+    # Get statistics
+    start = (datetime.now() - timedelta(hours=1)).isoformat()
+    end = (datetime.now() + timedelta(hours=1)).isoformat()
+    response = client.get(f"/api/v1/notifications/statistics?start={start}&end={end}")
     assert response.status_code == 200
     data = response.json()
     
-    assert "total_enviadas" in data
-    assert "exitosas" in data
-    assert "fallidas" in data
-    assert "por_tipo" in data
-    assert "por_canal" in data
-    assert data["exitosas"] >= 1
-    assert data["fallidas"] >= 1
+    assert "total_sent" in data
+    assert "successful" in data
+    assert "failed" in data
+    assert "by_type" in data
+    assert "by_channel" in data
+    assert data["successful"] >= 1
+    assert data["failed"] >= 1
 
-def test_get_notificaciones_por_canal(client: TestClient, test_user_data, test_cita_data):
-    """Prueba la obtención de notificaciones por canal a través de la API"""
-    # Crear cliente y cita
-    cliente_response = client.post("/api/v1/clientes", json=test_user_data)
-    cliente_id = cliente_response.json()["id"]
+def test_get_notifications_by_channel(client: TestClient, test_user_data, test_appointment_data):
+    """Tests retrieving notifications by channel through the API."""
+    # Create client and appointment
+    client_response = client.post("/api/v1/clients", json=test_user_data)
+    client_id = client_response.json()["id"]
     
-    cita_data = test_cita_data.copy()
-    cita_data["cliente_id"] = cliente_id
-    cita_response = client.post("/api/v1/citas", json=cita_data)
-    cita_id = cita_response.json()["id"]
+    appointment_data = test_appointment_data.copy()
+    appointment_data["client_id"] = client_id
+    appointment_response = client.post("/api/v1/appointments", json=appointment_data)
+    appointment_id = appointment_response.json()["id"]
     
-    # Obtener notificaciones por canal
+    # Get notifications by channel
     for canal in NotificationChannel:
-        response = client.get(f"/api/v1/notificaciones/canal/{canal.value}")
+        response = client.get(f"/api/v1/notifications/channel/{canal.value}")
         assert response.status_code == 200
         data = response.json()
         
-        assert all(notificacion["canal"] == canal.value for notificacion in data)
+        assert all(notification["channel"] == canal.value for notification in data)
         assert all("id" in notificacion for notificacion in data)
-        assert all("cita_id" in notificacion for notificacion in data)
-        assert all("tipo" in notificacion for notificacion in data)
-        assert all("estado" in notificacion for notificacion in data) 
+        assert all("appointment_id" in notification for notification in data)
+        assert all("type" in notification for notification in data)
+        assert all("status" in notification for notification in data)

@@ -1,5 +1,5 @@
 """
-Modelo para las preferencias de notificación de los clientes
+Model for customer notification preferences.
 """
 from datetime import datetime
 from sqlalchemy import Integer, DateTime, Boolean, ForeignKey, String
@@ -7,37 +7,37 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 
-class PreferenciasNotificacion(Base):
-    """Modelo para las preferencias de notificación de los clientes"""
-    __tablename__ = "preferencias_notificacion"
+class NotificationPreferences(Base):
+    """Model for customer notification preferences."""
+    __tablename__ = "notification_preferences"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    cliente_id: Mapped[int] = mapped_column(Integer, ForeignKey("clientes.id", ondelete="CASCADE"), unique=True)
+    customer_id: Mapped[int] = mapped_column(Integer, ForeignKey("customers.id", ondelete="CASCADE"), unique=True)
     
-    # Canales habilitados
-    email_habilitado: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    sms_habilitado: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    whatsapp_habilitado: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # Enabled channels
+    email_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    sms_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    whatsapp_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     
-    # Tipos de recordatorio habilitados
-    recordatorio_24h: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    recordatorio_2h: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # Enabled reminder types
+    reminder_24h: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    reminder_2h: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     
-    # Zona horaria del cliente
-    zona_horaria: Mapped[str] = mapped_column(String(50), nullable=False, default="America/Mexico_City")
+    # Customer timezone
+    timezone: Mapped[str] = mapped_column(String(50), nullable=False, default="US/Eastern")
     
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
-        default=lambda: datetime.now()
+        default=datetime.now
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
-        default=lambda: datetime.now(),
-        onupdate=lambda: datetime.now()
+        default=datetime.now,
+        onupdate=datetime.now
     )
 
-    # Relaciones
-    cliente = relationship("Cliente", back_populates="preferencias_notificacion") 
+    # Relationships
+    customer = relationship("Customer", back_populates="notification_preferences")

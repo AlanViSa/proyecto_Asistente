@@ -1,14 +1,13 @@
 """
-Pruebas de integración para los endpoints de servicios
+Integration tests for the service endpoints.
 """
-import pytest
 from fastapi.testclient import TestClient
-from app.models.servicio import Servicio
-from app.models.estado_servicio import EstadoServicio
+from app.models.service import Service
+from app.models.service_status import ServiceStatus
 
-def test_create_servicio(client: TestClient, test_servicio_data):
-    """Prueba la creación de un servicio a través de la API"""
-    response = client.post("/api/v1/servicios", json=test_servicio_data)
+def test_create_service(client: TestClient, test_service_data):
+    """Tests the creation of a service via the API."""
+    response = client.post("/api/v1/services", json=test_service_data)
     assert response.status_code == 200
     data = response.json()
     
@@ -16,168 +15,168 @@ def test_create_servicio(client: TestClient, test_servicio_data):
     assert data["descripcion"] == test_servicio_data["descripcion"]
     assert data["duracion"] == test_servicio_data["duracion"]
     assert data["precio"] == test_servicio_data["precio"]
-    assert data["estado"] == EstadoServicio.ACTIVO
+    assert data["estado"] == ServiceStatus.ACTIVE
     assert "id" in data
 
-def test_create_servicio_duplicate_name(client: TestClient, test_servicio_data):
-    """Prueba la creación de un servicio con nombre duplicado"""
-    # Crear primer servicio
-    client.post("/api/v1/servicios", json=test_servicio_data)
+def test_create_service_duplicate_name(client: TestClient, test_service_data):
+    """Tests the creation of a service with a duplicate name."""
+    # Create the first service
+    client.post("/api/v1/services", json=test_service_data)
     
-    # Intentar crear segundo servicio con el mismo nombre
-    response = client.post("/api/v1/servicios", json=test_servicio_data)
+    # Attempt to create a second service with the same name
+    response = client.post("/api/v1/services", json=test_service_data)
     assert response.status_code == 400
-    assert "nombre" in response.json()["detail"].lower()
+    assert "name" in response.json()["detail"].lower()
 
-def test_get_servicio(client: TestClient, test_servicio_data):
-    """Prueba la obtención de un servicio a través de la API"""
-    # Crear servicio
-    create_response = client.post("/api/v1/servicios", json=test_servicio_data)
-    servicio_id = create_response.json()["id"]
+def test_get_service(client: TestClient, test_service_data):
+    """Tests retrieving a service via the API."""
+    # Create a service
+    create_response = client.post("/api/v1/services", json=test_service_data)
+    service_id = create_response.json()["id"]
     
-    # Obtener servicio
-    response = client.get(f"/api/v1/servicios/{servicio_id}")
+    # Retrieve the service
+    response = client.get(f"/api/v1/services/{service_id}")
     assert response.status_code == 200
     data = response.json()
     
-    assert data["id"] == servicio_id
+    assert data["id"] == service_id
     assert data["nombre"] == test_servicio_data["nombre"]
     assert data["descripcion"] == test_servicio_data["descripcion"]
     assert data["duracion"] == test_servicio_data["duracion"]
     assert data["precio"] == test_servicio_data["precio"]
-    assert data["estado"] == EstadoServicio.ACTIVO
+    assert data["estado"] == ServiceStatus.ACTIVE
 
-def test_get_servicio_not_found(client: TestClient):
-    """Prueba la obtención de un servicio que no existe"""
-    response = client.get("/api/v1/servicios/999")
+def test_get_service_not_found(client: TestClient):
+    """Tests retrieving a service that does not exist."""
+    response = client.get("/api/v1/services/999")
     assert response.status_code == 404
 
-def test_update_servicio(client: TestClient, test_servicio_data):
-    """Prueba la actualización de un servicio a través de la API"""
-    # Crear servicio
-    create_response = client.post("/api/v1/servicios", json=test_servicio_data)
-    servicio_id = create_response.json()["id"]
+def test_update_service(client: TestClient, test_service_data):
+    """Tests updating a service via the API."""
+    # Create a service
+    create_response = client.post("/api/v1/services", json=test_service_data)
+    service_id = create_response.json()["id"]
     
-    # Actualizar servicio
-    update_data = {
-        "nombre": "Servicio Actualizado",
-        "descripcion": "Descripción actualizada",
-        "duracion": 120,
-        "precio": 150.0
+    # Update the service
+    update_data = {        
+        "name": "Updated Service",
+        "description": "Updated description",
+        "duration": 120,
+        "price": 150.0
     }
-    response = client.put(f"/api/v1/servicios/{servicio_id}", json=update_data)
+    response = client.put(f"/api/v1/services/{service_id}", json=update_data)
     assert response.status_code == 200
     data = response.json()
     
-    assert data["nombre"] == update_data["nombre"]
-    assert data["descripcion"] == update_data["descripcion"]
-    assert data["duracion"] == update_data["duracion"]
-    assert data["precio"] == update_data["precio"]
-    assert data["estado"] == EstadoServicio.ACTIVO
+    assert data["name"] == update_data["name"]
+    assert data["description"] == update_data["description"]
+    assert data["duration"] == update_data["duration"]
+    assert data["price"] == update_data["price"]
+    assert data["estado"] == ServiceStatus.ACTIVE
 
-def test_update_servicio_not_found(client: TestClient):
-    """Prueba la actualización de un servicio que no existe"""
+def test_update_service_not_found(client: TestClient):
+    """Tests updating a service that does not exist."""
     update_data = {
-        "nombre": "Servicio Actualizado",
-        "descripcion": "Descripción actualizada",
-        "duracion": 120,
-        "precio": 150.0
+        "name": "Updated Service",
+        "description": "Updated description",
+        "duration": 120,
+        "price": 150.0
     }
-    response = client.put("/api/v1/servicios/999", json=update_data)
+    response = client.put("/api/v1/services/999", json=update_data)
     assert response.status_code == 404
 
-def test_update_servicio_duplicate_name(client: TestClient, test_servicio_data):
-    """Prueba la actualización de un servicio con nombre duplicado"""
-    # Crear dos servicios
-    servicio1_response = client.post("/api/v1/servicios", json=test_servicio_data)
-    servicio1_id = servicio1_response.json()["id"]
+def test_update_service_duplicate_name(client: TestClient, test_service_data):
+    """Tests updating a service with a duplicate name."""
+    # Create two services
+    service1_response = client.post("/api/v1/services", json=test_service_data)
+    service1_id = service1_response.json()["id"]
     
-    servicio2_data = test_servicio_data.copy()
-    servicio2_data["nombre"] = "Otro Servicio"
-    servicio2_response = client.post("/api/v1/servicios", json=servicio2_data)
-    servicio2_id = servicio2_response.json()["id"]
+    service2_data = test_service_data.copy()
+    service2_data["name"] = "Another Service"
+    service2_response = client.post("/api/v1/services", json=service2_data)
+    service2_id = service2_response.json()["id"]
     
-    # Intentar actualizar el segundo servicio con el nombre del primero
-    update_data = {"nombre": test_servicio_data["nombre"]}
-    response = client.put(f"/api/v1/servicios/{servicio2_id}", json=update_data)
+    # Attempt to update the second service with the name of the first one
+    update_data = {"name": test_service_data["nombre"]}
+    response = client.put(f"/api/v1/services/{service2_id}", json=update_data)
     assert response.status_code == 400
-    assert "nombre" in response.json()["detail"].lower()
+    assert "name" in response.json()["detail"].lower()
 
-def test_delete_servicio(client: TestClient, test_servicio_data):
-    """Prueba la eliminación de un servicio a través de la API"""
-    # Crear servicio
-    create_response = client.post("/api/v1/servicios", json=test_servicio_data)
-    servicio_id = create_response.json()["id"]
+def test_delete_service(client: TestClient, test_service_data):
+    """Tests deleting a service via the API."""
+    # Create a service
+    create_response = client.post("/api/v1/services", json=test_service_data)
+    service_id = create_response.json()["id"]
     
-    # Eliminar servicio
-    response = client.delete(f"/api/v1/servicios/{servicio_id}")
+    # Delete the service
+    response = client.delete(f"/api/v1/services/{service_id}")
     assert response.status_code == 204
     
-    # Verificar que el servicio fue eliminado
-    get_response = client.get(f"/api/v1/servicios/{servicio_id}")
+    # Verify that the service was deleted
+    get_response = client.get(f"/api/v1/services/{service_id}")
     assert get_response.status_code == 404
 
-def test_delete_servicio_not_found(client: TestClient):
-    """Prueba la eliminación de un servicio que no existe"""
-    response = client.delete("/api/v1/servicios/999")
+def test_delete_service_not_found(client: TestClient):
+    """Tests deleting a service that does not exist."""
+    response = client.delete("/api/v1/services/999")
     assert response.status_code == 404
 
-def test_get_servicios(client: TestClient, test_servicio_data):
-    """Prueba la obtención de la lista de servicios a través de la API"""
-    # Crear varios servicios
+def test_get_services(client: TestClient, test_service_data):
+    """Tests retrieving the list of services via the API."""
+    # Create multiple services
     for i in range(3):
-        servicio_data = test_servicio_data.copy()
-        servicio_data["nombre"] = f"Servicio {i+1}"
-        client.post("/api/v1/servicios", json=servicio_data)
+        service_data = test_service_data.copy()
+        service_data["name"] = f"Service {i+1}"
+        client.post("/api/v1/services", json=service_data)
     
-    # Obtener lista de servicios
-    response = client.get("/api/v1/servicios")
+    # Retrieve the list of services
+    response = client.get("/api/v1/services")
     assert response.status_code == 200
     data = response.json()
     
     assert len(data) >= 3
     assert all("id" in servicio for servicio in data)
-    assert all("nombre" in servicio for servicio in data)
+    assert all("name" in service for service in data)
     assert all("descripcion" in servicio for servicio in data)
     assert all("duracion" in servicio for servicio in data)
     assert all("precio" in servicio for servicio in data)
     assert all("estado" in servicio for servicio in data)
 
 def test_activar_servicio(client: TestClient, test_servicio_data):
-    """Prueba la activación de un servicio a través de la API"""
-    # Crear servicio
-    create_response = client.post("/api/v1/servicios", json=test_servicio_data)
-    servicio_id = create_response.json()["id"]
+    """Tests activating a service via the API."""
+    # Create a service
+    create_response = client.post("/api/v1/services", json=test_servicio_data)
+    service_id = create_response.json()["id"]
     
-    # Desactivar servicio
-    client.put(f"/api/v1/servicios/{servicio_id}/desactivar")
+    # Deactivate the service
+    client.put(f"/api/v1/services/{service_id}/deactivate")
     
-    # Activar servicio
-    response = client.put(f"/api/v1/servicios/{servicio_id}/activar")
+    # Activate the service
+    response = client.put(f"/api/v1/services/{service_id}/activate")
     assert response.status_code == 200
     data = response.json()
     
-    assert data["estado"] == EstadoServicio.ACTIVO
+    assert data["estado"] == ServiceStatus.ACTIVE
 
 def test_desactivar_servicio(client: TestClient, test_servicio_data):
-    """Prueba la desactivación de un servicio a través de la API"""
-    # Crear servicio
-    create_response = client.post("/api/v1/servicios", json=test_servicio_data)
-    servicio_id = create_response.json()["id"]
+    """Tests deactivating a service via the API."""
+    # Create a service
+    create_response = client.post("/api/v1/services", json=test_service_data)
+    service_id = create_response.json()["id"]
     
-    # Desactivar servicio
-    response = client.put(f"/api/v1/servicios/{servicio_id}/desactivar")
+    # Deactivate the service
+    response = client.put(f"/api/v1/services/{service_id}/deactivate")
     assert response.status_code == 200
     data = response.json()
     
-    assert data["estado"] == EstadoServicio.INACTIVO
+    assert data["estado"] == ServiceStatus.INACTIVE
 
 def test_activar_servicio_not_found(client: TestClient):
-    """Prueba la activación de un servicio que no existe"""
-    response = client.put("/api/v1/servicios/999/activar")
+    """Tests activating a service that does not exist."""
+    response = client.put("/api/v1/services/999/activate")
     assert response.status_code == 404
 
 def test_desactivar_servicio_not_found(client: TestClient):
-    """Prueba la desactivación de un servicio que no existe"""
-    response = client.put("/api/v1/servicios/999/desactivar")
+    """Tests deactivating a service that does not exist."""
+    response = client.put("/api/v1/services/999/deactivate")
     assert response.status_code == 404 
