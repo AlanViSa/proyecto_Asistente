@@ -16,7 +16,7 @@ from sqlalchemy.sql import func
 
 from app.db.database import Base
 
-class Health(Base):
+class HealthCheck(Base):
     """Health check model for testing database connectivity"""
     __tablename__ = "health"
 
