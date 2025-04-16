@@ -8,6 +8,15 @@ Sistema de gestión para salones de belleza que permite administrar citas, clien
 - Docker Compose 2.0+
 - Git
 
+## Documentación
+
+**New!** Comprehensive documentation is now available in the `docs/` directory:
+
+- [English Documentation](docs/README.md) - Complete technical documentation in English
+- [Spanish Documentation](docs/DOCUMENTACION.md) - Complete technical documentation in Spanish
+- [Contributing Guide](docs/CONTRIBUTING.md) - How to contribute to the project
+- [Documentation Index](docs/index.md) - Overview of all documentation resources
+
 ## Instalación
 
 1. Clonar el repositorio:

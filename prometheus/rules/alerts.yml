@@ -7,8 +7,8 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "Alta tasa de errores HTTP"
-          description: "La tasa de errores HTTP es superior al 5% en los últimos 5 minutos"
+          summary: "High HTTP error rate"
+          description: "Error rate is above 5% for the last 5 minutes"
 
       - alert: HighLatency
         expr: rate(http_request_duration_seconds_sum[5m]) / rate(http_request_duration_seconds_count[5m]) > 2
@@ -16,8 +16,8 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "Alta latencia en solicitudes HTTP"
-          description: "La latencia promedio de las solicitudes HTTP es superior a 2 segundos"
+          summary: "High HTTP request latency"
+          description: "Average request latency is above 2 seconds"
 
       - alert: TooManyDBConnections
         expr: db_connections > 100
@@ -25,8 +25,8 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "Demasiadas conexiones a la base de datos"
-          description: "El número de conexiones activas a la base de datos es superior a 100"
+          summary: "Too many database connections"
+          description: "Number of active database connections is above 100"
 
       - alert: HighActiveUsers
         expr: active_users > 1000
@@ -34,5 +34,5 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "Alto número de usuarios activos"
-          description: "El número de usuarios activos es superior a 1000" 
+          summary: "High number of active users"
+          description: "Number of active users is above 1000" 
